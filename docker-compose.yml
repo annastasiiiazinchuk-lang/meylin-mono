@@ -1,0 +1,49 @@
+services:
+  db:
+    image: postgres:latest
+    container_name: meylin-mono-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: meylin_mono
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U postgres']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build: .
+    container_name: meylin-mono-app
+    ports:
+      - '3000:3000'
+    environment:
+      DATABASE_URL: postgresql://postgres:postgres@db:5432/meylin_mono
+      SHOPIFY_CLIENT_ID: ${SHOPIFY_CLIENT_ID}
+      SHOPIFY_CLIENT_SECRET: ${SHOPIFY_CLIENT_SECRET}
+      SHOPIFY_STORE_DOMAIN: ${SHOPIFY_STORE_DOMAIN}
+      SHOPIFY_STORE_URL: ${SHOPIFY_STORE_URL}
+      SHOPIFY_ADMIN_ACCESS_TOKEN: ${SHOPIFY_ADMIN_ACCESS_TOKEN}
+      MONO_TOKEN: ${MONO_TOKEN}
+      WEBHOOK_URL: ${WEBHOOK_URL}
+      REDIRECT_URL: ${REDIRECT_URL}
+      NOVA_POSHTA_API_KEY: ${NOVA_POSHTA_API_KEY}
+      META_PIXEL_ID: ${META_PIXEL_ID}
+      META_ACCESS_TOKEN: ${META_ACCESS_TOKEN}
+      META_GRAPH_VERSION: ${META_GRAPH_VERSION:-v23.0}
+    env_file:
+      - .env
+    volumes:
+      - .:/app
+      - /app/node_modules
+    depends_on:
+      db:
+        condition: service_healthy
+    command: sh -c "bunx prisma migrate deploy && bun --watch run index.ts"
+
+volumes:
+  postgres_data:

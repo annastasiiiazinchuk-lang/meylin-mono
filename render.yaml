@@ -1,0 +1,99 @@
+services:
+  - type: web
+    name: meylin-mono
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: meylin-mono-db
+          property: connectionString
+      - key: MONO_TOKEN
+        sync: false
+      - key: WEBHOOK_URL
+        sync: false
+      - key: REDIRECT_URL
+        sync: false
+      - key: MONO_PARTS_BASE_URL
+        value: https://u2.monobank.com.ua
+      - key: MONO_PARTS_STORE_ID
+        sync: false
+      - key: MONO_PARTS_SECRET
+        sync: false
+      - key: MONO_PARTS_RESULT_CALLBACK_URL
+        sync: false
+      - key: MONO_PARTS_COUNTS
+        value: "3"
+      - key: MONO_PARTS_INVOICE_SOURCE
+        value: INTERNET
+      - key: MONO_PARTS_POINT_ID
+        sync: false
+      - key: MONO_PARTS_ADMIN_TOKEN
+        sync: false
+      - key: MONO_PARTS_AUTO_CONFIRM
+        value: "false"
+      - key: MONO_PARTS_ENABLED
+        value: "false"
+      - key: SHOPIFY_STORE_DOMAIN
+        sync: false
+      - key: SHOPIFY_STORE_URL
+        sync: false
+      - key: SHOPIFY_CLIENT_ID
+        sync: false
+      - key: SHOPIFY_CLIENT_SECRET
+        sync: false
+      - key: SHOPIFY_ADMIN_ACCESS_TOKEN
+        sync: false
+      - key: SHOPIFY_PAYMENT_UPDATE_DELAY_SECONDS
+        value: 0
+      - key: NOVA_POSHTA_API_KEY
+        sync: false
+      - key: SITNIKS_API_BASE_URL
+        value: https://crm.sitniks.com
+      - key: SITNIKS_API_TOKEN
+        sync: false
+      - key: SITNIKS_STATUS_ID
+        sync: false
+      - key: SITNIKS_PAID_STATUS_ID
+        sync: false
+      - key: SITNIKS_PREPAYMENT_PAID_STATUS_ID
+        sync: false
+      - key: SITNIKS_PARTS_PAID_STATUS_ID
+        sync: false
+      - key: SITNIKS_SALES_CHANNEL_ID
+        sync: false
+      - key: SITNIKS_SETTLEMENT_ACCOUNT_ID
+        sync: false
+      - key: SITNIKS_WAREHOUSE_ID
+        sync: false
+      - key: SITNIKS_NOVA_POSHTA_INTEGRATION_ID
+        sync: false
+      - key: SITNIKS_CASH_REGISTER_ID
+        sync: false
+      - key: SITNIKS_RECEIPTS_ENABLED
+        value: "false"
+      - key: SITNIKS_RECEIPT_PAYMENT_TYPE
+        value: prepayment
+      - key: SITNIKS_RECEIPT_VERIFY_ATTEMPTS
+        value: 6
+      - key: SITNIKS_RECEIPT_VERIFY_DELAY_MS
+        value: 5000
+      - key: SITNIKS_OFFER_MAP
+        sync: false
+      - key: META_PIXEL_ID
+        sync: false
+      - key: META_ACCESS_TOKEN
+        sync: false
+      - key: META_GRAPH_VERSION
+        value: v23.0
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    plan: free
+
+databases:
+  - name: meylin-mono-db
+    plan: free

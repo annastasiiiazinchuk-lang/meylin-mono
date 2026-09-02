@@ -1,0 +1,65 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Payment {
+  id               String        @id @default(cuid())
+  orderId          String?
+  utm              Json?
+  amount           Float
+  currency         String        @default("UAH")
+  customerName     String
+  customerPhone    String
+  customerEmail    String
+  reference        String        @unique
+  invoiceId        String?
+  pageUrl          String?
+  status           PaymentStatus @default(PENDING)
+  destination      String?
+  goods            Json[]
+  shipping         Json?
+  measurements     Json?
+  comment          String?
+  createdReceipt   Boolean       @default(false)
+  shopifyOrderId   BigInt?
+  shopifyOrderName String?
+  paymentType      String?
+  cartTotal        Float?
+  tracking         Json?
+  webhookPayload   Json?
+  shopifyOrderData Json?
+  sitniksOrderId   BigInt?
+  sitniksOrderNumber String?
+  sitniksSyncStatus String?
+  sitniksSyncError String?
+  sitniksSyncedAt DateTime?
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  @@index([shopifyOrderId])
+  @@index([invoiceId])
+  @@index([sitniksOrderId])
+  @@map("payments")
+}
+
+model ShopifyToken {
+  shop        String   @id
+  accessToken String
+  scope       String?
+  installedAt DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("shopify_tokens")
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCESS
+  FAILED
+  CANCELLED
+}
