@@ -5,6 +5,7 @@ import { handleHealth, handleHealthDb } from './lib/routes/health';
 import { handleMonobankPartsReject } from './lib/routes/monobank-parts';
 import { handleNovaPoshtaCities, handleNovaPoshtaWarehouses } from './lib/routes/nova-poshta';
 import { handleCreateInvoice, handlePaymentOptions } from './lib/routes/orders';
+import { handlePaymentStatus } from './lib/routes/payments';
 import { handleShopifyAuth, handleShopifyAuthCallback } from './lib/routes/shopify-auth';
 import { handleMonobankPartsWebhook, handleMonobankWebhook } from './lib/routes/webhooks';
 
@@ -52,6 +53,9 @@ async function route(request: Request): Promise<Response> {
   }
   if (method === 'GET' && pathname === '/api/payment-options') {
     return handlePaymentOptions();
+  }
+  if (method === 'GET' && pathname === '/api/payments/status') {
+    return handlePaymentStatus(request);
   }
   if (method === 'POST' && pathname === '/api/monobank-parts/reject') {
     return handleMonobankPartsReject(request);

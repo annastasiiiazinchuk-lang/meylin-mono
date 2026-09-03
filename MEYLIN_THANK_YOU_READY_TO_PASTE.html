@@ -1,0 +1,322 @@
+<style>
+  .meylin-thank-you {
+    max-width: 760px;
+    margin: 56px auto;
+    padding: 0 18px;
+    color: #20251f;
+    font-family: inherit;
+  }
+
+  .meylin-thank-you-box {
+    border: 1px solid #dfe8dd;
+    border-radius: 8px;
+    padding: 28px;
+    background: #fbfcfa;
+  }
+
+  .meylin-thank-you h1 {
+    margin: 0 0 12px;
+    font-size: 30px;
+    line-height: 1.2;
+    letter-spacing: 0;
+  }
+
+  .meylin-thank-you p {
+    margin: 8px 0 0;
+    font-size: 16px;
+    line-height: 1.55;
+  }
+
+  .meylin-thank-you-status {
+    margin-top: 18px;
+    padding: 14px 16px;
+    border-radius: 8px;
+    background: #edf5e7;
+    color: #2f5522;
+    font-weight: 600;
+  }
+
+  .meylin-thank-you-status[data-state="pending"] {
+    background: #fff8e6;
+    color: #745118;
+  }
+
+  .meylin-thank-you-status[data-state="failed"] {
+    background: #fdecec;
+    color: #8c2c2b;
+  }
+</style>
+
+<section class="meylin-thank-you" aria-live="polite">
+  <div class="meylin-thank-you-box">
+    <h1>Дякуємо за замовлення</h1>
+    <p>Ми перевіряємо статус оплати. Після підтвердження замовлення автоматично оновиться.</p>
+    <div class="meylin-thank-you-status" id="meylin-payment-status" data-state="pending">
+      Очікуємо підтвердження оплати...
+    </div>
+  </div>
+</section>
+
+<script>
+  window.MEYLIN_META_PIXEL_ID = window.MEYLIN_META_PIXEL_ID || '1655162022196585';
+  window.MEYLIN_GOOGLE_ADS_CONVERSION_ID = window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || 'AW-18407975603';
+  window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL = window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL || '5q34CNjBhuscELFVzclE';
+  window.MEYLIN_GTM_ID = window.MEYLIN_GTM_ID || 'GTM-T6J4MQJT';
+  window.MEYLIN_GA4_MEASUREMENT_ID = window.MEYLIN_GA4_MEASUREMENT_ID || 'G-HXLFPNCR63';
+</script>
+
+<script>
+(function () {
+  const API_BASE_URL = 'https://meylin-mono.onrender.com';
+  const PENDING_PAYMENT_KEY = 'meylin_pending_payment';
+  const statusEl = document.getElementById('meylin-payment-status');
+
+  function setStatus(message, state) {
+    if (!statusEl) return;
+    statusEl.textContent = message;
+    statusEl.dataset.state = state || 'pending';
+  }
+
+  function readJsonStorage(key) {
+    try {
+      return JSON.parse(localStorage.getItem(key) || '{}');
+    } catch {
+      return {};
+    }
+  }
+
+  function writeJsonStorage(key, value) {
+    try {
+      localStorage.setItem(key, JSON.stringify(value));
+    } catch {}
+  }
+
+  function getQueryPayment() {
+    const params = new URLSearchParams(window.location.search);
+    return {
+      invoiceId: params.get('invoiceId') || params.get('invoice_id') || '',
+      reference: params.get('reference') || params.get('ref') || '',
+    };
+  }
+
+  function getPendingPayment() {
+    const query = getQueryPayment();
+    const saved = readJsonStorage(PENDING_PAYMENT_KEY);
+    return {
+      ...saved,
+      invoiceId: query.invoiceId || saved.invoiceId || '',
+      reference: query.reference || saved.reference || '',
+    };
+  }
+
+  function getStatusUrl(payment) {
+    const url = new URL(`${API_BASE_URL}/api/payments/status`);
+    if (payment.invoiceId) {
+      url.searchParams.set('invoiceId', payment.invoiceId);
+    } else if (payment.reference) {
+      url.searchParams.set('reference', payment.reference);
+    }
+    return url.toString();
+  }
+
+  function ensureGoogleTags() {
+    const gtmId = String(window.MEYLIN_GTM_ID || '').trim();
+    window.dataLayer = window.dataLayer || [];
+
+    if (gtmId && !window.__meylinGtmLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}"]`)) {
+      window.__meylinGtmLoaded = gtmId;
+      window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+      const script = document.createElement('script');
+      const firstScript = document.getElementsByTagName('script')[0];
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}`;
+      firstScript.parentNode.insertBefore(script, firstScript);
+    }
+
+    const googleAdsId = String(window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || '').trim();
+    const ga4Id = String(window.MEYLIN_GA4_MEASUREMENT_ID || '').trim();
+    const primaryGoogleTagId = googleAdsId || ga4Id;
+    if (!primaryGoogleTagId) return;
+
+    window.gtag = window.gtag || function () {
+      window.dataLayer.push(arguments);
+    };
+
+    if (!window.__meylinGoogleTagLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}"]`)) {
+      window.__meylinGoogleTagLoaded = primaryGoogleTagId;
+      const script = document.createElement('script');
+      script.async = true;
+      script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}`;
+      document.head.appendChild(script);
+    }
+
+    window.gtag('js', new Date());
+    if (googleAdsId) window.gtag('config', googleAdsId);
+    if (ga4Id && ga4Id !== googleAdsId) window.gtag('config', ga4Id);
+  }
+
+  function ensureMetaPixel() {
+    const metaPixelId = String(window.MEYLIN_META_PIXEL_ID || '').trim();
+    if (!metaPixelId || window.__meylinMetaPixelReady === metaPixelId) return;
+
+    if (typeof window.fbq !== 'function') {
+      (function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = true;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = true;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    }
+
+    window.fbq('init', metaPixelId);
+    window.fbq('track', 'PageView');
+    window.__meylinMetaPixelReady = metaPixelId;
+  }
+
+  function getPurchasePayload(status, pending) {
+    const transactionId = String(status.transactionId || status.invoiceId || pending.transactionId || pending.invoiceId || pending.reference || '').trim();
+    const items = Array.isArray(status.items) && status.items.length
+      ? status.items
+      : Array.isArray(pending.items)
+        ? pending.items
+        : [];
+    const value = Number(status.value || pending.value || pending.amount || 0) || 0;
+    const currency = String(status.currency || pending.currency || 'UAH');
+    const eventId = String(status.eventId || (transactionId ? `mono_${transactionId}` : '')).trim();
+
+    return {
+      transaction_id: transactionId,
+      order_id: String(status.orderId || pending.orderId || ''),
+      order_name: String(status.orderName || pending.orderName || ''),
+      event_id: eventId,
+      currency,
+      value,
+      items,
+      payment_type: String(status.paymentType || pending.paymentType || ''),
+    };
+  }
+
+  function wasPurchaseTracked(transactionId) {
+    return Boolean(transactionId && localStorage.getItem(`meylin_purchase_tracked_${transactionId}`));
+  }
+
+  function markPurchaseTracked(transactionId) {
+    if (transactionId) localStorage.setItem(`meylin_purchase_tracked_${transactionId}`, 'true');
+  }
+
+  function trackPurchase(status, pending) {
+    const payload = getPurchasePayload(status, pending);
+    if (!payload.transaction_id || wasPurchaseTracked(payload.transaction_id)) return;
+
+    window.dataLayer = window.dataLayer || [];
+    window.dataLayer.push({
+      event: 'purchase',
+      ...payload,
+      ecommerce: {
+        transaction_id: payload.transaction_id,
+        value: payload.value,
+        currency: payload.currency,
+        items: payload.items,
+      },
+    });
+
+    if (typeof window.gtag === 'function') {
+      window.gtag('event', 'purchase', {
+        transaction_id: payload.transaction_id,
+        value: payload.value,
+        currency: payload.currency,
+        items: payload.items,
+      });
+
+      const googleAdsId = String(window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || '').trim();
+      const purchaseLabel = String(window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL || '').trim();
+      if (googleAdsId && purchaseLabel) {
+        window.gtag('event', 'conversion', {
+          send_to: `${googleAdsId}/${purchaseLabel}`,
+          value: payload.value,
+          currency: payload.currency,
+          transaction_id: payload.transaction_id,
+        });
+      }
+    }
+
+    if (typeof window.fbq === 'function') {
+      window.fbq('track', 'Purchase', {
+        currency: payload.currency,
+        value: payload.value,
+        content_ids: payload.items.map((item) => item.item_id).filter(Boolean),
+        contents: payload.items,
+        content_type: 'product',
+      }, payload.event_id ? { eventID: payload.event_id } : undefined);
+    }
+
+    markPurchaseTracked(payload.transaction_id);
+    writeJsonStorage(PENDING_PAYMENT_KEY, {
+      ...pending,
+      purchaseTracked: true,
+      purchaseTrackedAt: Date.now(),
+    });
+  }
+
+  async function fetchPaymentStatus(payment) {
+    const response = await fetch(getStatusUrl(payment), {
+      headers: { Accept: 'application/json' },
+    });
+    if (!response.ok) throw new Error(`Payment status ${response.status}`);
+    return response.json();
+  }
+
+  async function waitForSuccess(payment) {
+    const attempts = 24;
+    for (let index = 0; index < attempts; index += 1) {
+      try {
+        const status = await fetchPaymentStatus(payment);
+        if (status.status === 'SUCCESS') return status;
+        if (status.status === 'FAILED' || status.status === 'CANCELLED') {
+          setStatus('Оплату не завершено. Якщо кошти списались, напишіть нам.', 'failed');
+          return null;
+        }
+      } catch (error) {
+        console.warn('Payment status check failed:', error);
+      }
+
+      await new Promise((resolve) => setTimeout(resolve, 2500));
+    }
+
+    setStatus('Оплата ще обробляється. Замовлення підтвердиться автоматично після відповіді банку.', 'pending');
+    return null;
+  }
+
+  async function init() {
+    ensureGoogleTags();
+    ensureMetaPixel();
+
+    const pending = getPendingPayment();
+    if (!pending.invoiceId && !pending.reference) {
+      setStatus('Дякуємо. Якщо оплату завершено, замовлення підтвердиться автоматично.', 'pending');
+      return;
+    }
+
+    const status = await waitForSuccess(pending);
+    if (!status) return;
+
+    trackPurchase(status, pending);
+    setStatus('Оплату підтверджено. Дякуємо за покупку!', 'success');
+  }
+
+  init().catch((error) => {
+    console.error(error);
+    setStatus('Не вдалося перевірити оплату. Якщо кошти списались, замовлення підтвердиться автоматично.', 'pending');
+  });
+})();
+</script>

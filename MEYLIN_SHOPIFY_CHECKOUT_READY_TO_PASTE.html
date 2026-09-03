@@ -1136,6 +1136,31 @@ document.addEventListener('DOMContentLoaded', function () {
     }));
   }
 
+  function savePendingPaymentForPurchase(data) {
+    const invoiceId = String(data?.invoiceId || '').trim();
+    const reference = String(data?.reference || '').trim();
+    if (!invoiceId && !reference) return;
+
+    try {
+      localStorage.setItem('meylin_pending_payment', JSON.stringify({
+        invoiceId,
+        reference,
+        transactionId: invoiceId || reference,
+        orderId: String(data?.shopifyOrderId || ''),
+        orderName: String(data?.shopifyOrderName || ''),
+        amount: Number(data?.amount || amountField.value || 0) || 0,
+        value: getCheckoutTotal(),
+        currency: 'UAH',
+        paymentType: getPaymentType(),
+        items: getTrackingItems(),
+        tracking: collectTrackingData(),
+        createdAt: Date.now(),
+      }));
+    } catch (error) {
+      console.warn('Could not save pending payment for purchase tracking:', error);
+    }
+  }
+
   function trackCheckoutEvent(eventName, extra = {}) {
     const eventId = getEventId(eventName);
     const payload = {
@@ -2428,6 +2453,7 @@ document.addEventListener('DOMContentLoaded', function () {
         throw new Error(data.details || data.error || t('createPaymentError'));
       }
 
+      savePendingPaymentForPurchase(data);
       submitBtn.textContent = t('clearingCart');
       await clearCart();
 

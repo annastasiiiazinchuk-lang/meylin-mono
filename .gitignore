@@ -1,4 +1,7 @@
 node_modules
+.bun-cache
+.cache
+.home
 .env
 .env.local
 .DS_Store
