@@ -20,6 +20,7 @@ export async function handleHealth(): Promise<Response> {
     ...(shopifyTokenError ? { shopifyTokenError } : {}),
     novaPoshtaReady: Boolean(env.novaPoshtaApiKey),
     metaReady: Boolean(env.metaPixelId && env.metaAccessToken),
+    ga4ServerReady: Boolean(env.ga4MeasurementId && env.ga4ApiSecret),
     sitniksReady: Boolean(env.sitniksApiToken),
     monobankPartsReady: Boolean(env.monoPartsEnabled && env.monoPartsStoreId && env.monoPartsSecret),
   });

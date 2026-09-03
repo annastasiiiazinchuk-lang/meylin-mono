@@ -17,6 +17,7 @@ import {
   sendSitniksPaymentTransaction,
   updateSitniksPaymentStatus,
 } from '../sitniks/sitniks-order';
+import { sendGa4PurchaseEvent } from '../tracking/google-analytics';
 import { sendMetaPurchaseEvent } from '../tracking/meta';
 
 function getPaidAmount(body: MonobankWebhookBody): number {
@@ -170,6 +171,10 @@ export async function processMonobankWebhook(body: MonobankWebhookBody): Promise
 
     await sendMetaPurchaseEvent(payment, body).catch((error) => {
       console.error('Failed to send Meta Purchase:', error);
+    });
+
+    await sendGa4PurchaseEvent(payment, body).catch((error) => {
+      console.error('Failed to send Google GA4 Purchase:', error);
     });
 
     return json({ ok: true });

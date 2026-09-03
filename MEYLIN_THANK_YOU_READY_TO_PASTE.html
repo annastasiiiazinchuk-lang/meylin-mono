@@ -63,6 +63,7 @@
   window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL = window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL || '5q34CNjBhuscELFVzclE';
   window.MEYLIN_GTM_ID = window.MEYLIN_GTM_ID || 'GTM-T6J4MQJT';
   window.MEYLIN_GA4_MEASUREMENT_ID = window.MEYLIN_GA4_MEASUREMENT_ID || 'G-HXLFPNCR63';
+  window.MEYLIN_BROWSER_PURCHASE_ENABLED = window.MEYLIN_BROWSER_PURCHASE_ENABLED || false;
 </script>
 
 <script>
@@ -214,6 +215,11 @@
     if (transactionId) localStorage.setItem(`meylin_purchase_tracked_${transactionId}`, 'true');
   }
 
+  function isBrowserPurchaseEnabled() {
+    return window.MEYLIN_BROWSER_PURCHASE_ENABLED === true
+      || String(window.MEYLIN_BROWSER_PURCHASE_ENABLED).toLowerCase() === 'true';
+  }
+
   function trackPurchase(status, pending) {
     const payload = getPurchasePayload(status, pending);
     if (!payload.transaction_id || wasPurchaseTracked(payload.transaction_id)) return;
@@ -310,7 +316,9 @@
     const status = await waitForSuccess(pending);
     if (!status) return;
 
-    trackPurchase(status, pending);
+    if (isBrowserPurchaseEnabled()) {
+      trackPurchase(status, pending);
+    }
     setStatus('Оплату підтверджено. Дякуємо за покупку!', 'success');
   }
 

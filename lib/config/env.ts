@@ -36,6 +36,8 @@ export const env = {
   metaPixelId: process.env.META_PIXEL_ID || '',
   metaAccessToken: process.env.META_ACCESS_TOKEN || '',
   metaGraphVersion: process.env.META_GRAPH_VERSION || 'v23.0',
+  ga4MeasurementId: process.env.GA4_MEASUREMENT_ID || '',
+  ga4ApiSecret: process.env.GA4_API_SECRET || '',
   sitniksApiBaseUrl: normalizeBaseUrl(process.env.SITNIKS_API_BASE_URL || 'https://crm.sitniks.com'),
   sitniksApiToken: process.env.SITNIKS_API_TOKEN || '',
   sitniksStatusId: Number(process.env.SITNIKS_STATUS_ID || SITNIKS_DEFAULT_STATUS_ID),

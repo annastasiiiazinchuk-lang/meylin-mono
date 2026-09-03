@@ -29,6 +29,12 @@ function getTrackingSubset(tracking: unknown) {
     'gclid',
     'gbraid',
     'wbraid',
+    'gcl_aw',
+    'gcl_au',
+    'ga_cookie',
+    'ga_client_id',
+    'ga_session_cookie',
+    'ga_session_id',
   ];
 
   return Object.fromEntries(

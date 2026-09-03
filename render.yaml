@@ -90,6 +90,10 @@ services:
         sync: false
       - key: META_GRAPH_VERSION
         value: v23.0
+      - key: GA4_MEASUREMENT_ID
+        value: G-HXLFPNCR63
+      - key: GA4_API_SECRET
+        sync: false
     healthCheckPath: /api/health
     autoDeployTrigger: commit
     plan: free
