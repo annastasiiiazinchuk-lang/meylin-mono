@@ -5,10 +5,9 @@
   body, html {
     margin: 0;
     background-color: #f2f2f3 !important;
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   }
 
-  #customCheckoutForm label {
+  #meylinOrderForm label {
     display: block;
     margin-bottom: 8px;
     font-size: 14px;
@@ -18,11 +17,11 @@
   }
   input, textarea, select, button { box-sizing: border-box; font-family: inherit; }
 
-  #customCheckoutForm input[type=text],
-  #customCheckoutForm input[type=tel],
-  #customCheckoutForm input[type=email],
-  #customCheckoutForm textarea,
-  #customCheckoutForm select {
+  #meylinOrderForm input[type=text],
+  #meylinOrderForm input[type=tel],
+  #meylinOrderForm input[type=email],
+  #meylinOrderForm textarea,
+  #meylinOrderForm select {
     width: 100%;
     padding: 11px 14px;
     border: 1px solid #e0e0e0;
@@ -34,9 +33,9 @@
     transition: border-color .2s;
     text-align: left !important;
   }
-  #customCheckoutForm input:focus,
-  #customCheckoutForm textarea:focus,
-  #customCheckoutForm select:focus {
+  #meylinOrderForm input:focus,
+  #meylinOrderForm textarea:focus,
+  #meylinOrderForm select:focus {
     border-color: #3B6D11;
     outline: none;
     box-shadow: 0 0 0 3px rgba(59,109,17,0.08);
@@ -101,7 +100,7 @@
     margin-top: 12px;
   }
 
-  #customCheckoutForm .payment-card {
+  #meylinOrderForm .payment-card {
     position: relative;
     border: 1.5px solid #e0e0e0 !important;
     border-radius: 10px;
@@ -114,19 +113,19 @@
     align-items: flex-start !important;
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card:hover {
+  #meylinOrderForm .payment-card:hover {
     border-color: #97C459 !important;
   }
-  #customCheckoutForm .payment-card input[type="radio"] {
+  #meylinOrderForm .payment-card input[type="radio"] {
     position: absolute;
     opacity: 0;
     width: 0;
     height: 0;
   }
-  #customCheckoutForm .payment-card * {
+  #meylinOrderForm .payment-card * {
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card-label {
+  #meylinOrderForm .payment-card-label {
     font-size: 14px !important;
     font-weight: 600 !important;
     color: #212b36 !important;
@@ -134,14 +133,14 @@
     margin-bottom: 4px;
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card-desc {
+  #meylinOrderForm .payment-card-desc {
     font-size: 13px !important;
     color: #637381 !important;
     display: block !important;
     line-height: 1.4;
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card-badge {
+  #meylinOrderForm .payment-card-badge {
     display: inline-block !important;
     margin-top: 10px;
     font-size: 12px !important;
@@ -152,7 +151,7 @@
     color: #27500A !important;
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card-save {
+  #meylinOrderForm .payment-card-save {
     display: inline-block !important;
     margin-top: 10px;
     font-size: 12px !important;
@@ -164,17 +163,17 @@
     border: 1px solid #97C459 !important;
     text-align: left !important;
   }
-  #customCheckoutForm .payment-card.active {
+  #meylinOrderForm .payment-card.active {
     border: 2px solid #3B6D11 !important;
     background: #EAF3DE !important;
   }
-  #customCheckoutForm .payment-card.active .payment-card-label {
+  #meylinOrderForm .payment-card.active .payment-card-label {
     color: #27500A !important;
   }
-  #customCheckoutForm .payment-card.active .payment-card-desc {
+  #meylinOrderForm .payment-card.active .payment-card-desc {
     color: #3B6D11 !important;
   }
-  #customCheckoutForm .payment-card.active .payment-card-save {
+  #meylinOrderForm .payment-card.active .payment-card-save {
     background: #C0DD97 !important;
     border-color: #97C459 !important;
   }
@@ -234,7 +233,7 @@
   }
   .summary-box p { margin: 0; }
 
-  .btn-checkout {
+  .btn-order-submit {
     display: block;
     width: 100%;
     padding: 15px;
@@ -250,8 +249,8 @@
     transition: opacity 0.18s, transform 0.18s;
     margin-top: 4px;
   }
-  .btn-checkout:hover { opacity: .92; transform: translateY(-1px); }
-  .btn-checkout:active { transform: scale(0.99); }
+  .btn-order-submit:hover { opacity: .92; transform: translateY(-1px); }
+  .btn-order-submit:active { transform: scale(0.99); }
 
   .suggestions {
     display: none;
@@ -327,7 +326,7 @@
   <div class="checkout-grid">
 
     <div class="checkout-form">
-      <form id="customCheckoutForm" autocomplete="off">
+      <form id="meylinOrderForm" autocomplete="off">
 
         <label for="first_name">Ім'я</label>
         <input type="text" id="first_name" name="first_name" required>
@@ -340,8 +339,11 @@
         <div id="phone-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть вірний номер з кодом країни!</div>
 
         <label for="email">E-mail</label>
-        <input type="email" id="email" name="email" required>
+        <input type="email" id="email" name="email">
         <div id="email-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть коректний email!</div>
+
+        <label for="telegram">Telegram</label>
+        <input type="text" id="telegram" name="telegram" autocomplete="off" placeholder="@username">
 
         <fieldset class="shipping-type">
           <legend>Спосіб доставки</legend>
@@ -395,7 +397,7 @@
         <input type="hidden" id="amount" name="amount">
         <input type="hidden" id="payment_type_hidden" name="payment_type_value" value="full">
 
-        <button type="submit" class="btn-checkout" id="submit-btn">Оплатити</button>
+        <button type="submit" class="btn-order-submit" id="submit-btn">Оплатити</button>
 
       </form>
     </div>
@@ -413,7 +415,51 @@
 </div>
 
 <script>
-  window.WOODEN_CHECKOUT_LOCALE = '{{ localization.language.iso_code }}';
+  window.MEYLIN_CHECKOUT_LOCALE = '{{ localization.language.iso_code }}';
+  // Put only the public Meta Pixel ID here. Keep META_ACCESS_TOKEN on the backend.
+  window.MEYLIN_META_PIXEL_ID = window.MEYLIN_META_PIXEL_ID || '';
+  window.MEYLIN_GOOGLE_ADS_CONVERSION_ID = window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || 'AW-184075603';
+  window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL = window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL || '5q34CNjBhusFVzclE';
+  window.MEYLIN_GTM_ID = window.MEYLIN_GTM_ID || 'GTM-T6JQJT';
+  window.MEYLIN_GA4_MEASUREMENT_ID = window.MEYLIN_GA4_MEASUREMENT_ID || 'G-HXLFCR63';
+</script>
+
+<script>
+(function () {
+  const gtmId = String(window.MEYLIN_GTM_ID || '').trim();
+  window.dataLayer = window.dataLayer || [];
+
+  if (gtmId && !window.__meylinGtmLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}"]`)) {
+    window.__meylinGtmLoaded = gtmId;
+    window.dataLayer.push({ 'gtm.start': Date.now(), event: 'gtm.js' });
+    const script = document.createElement('script');
+    const firstScript = document.getElementsByTagName('script')[0];
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtm.js?id=${encodeURIComponent(gtmId)}`;
+    firstScript.parentNode.insertBefore(script, firstScript);
+  }
+
+  const googleAdsId = String(window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || '').trim();
+  const ga4Id = String(window.MEYLIN_GA4_MEASUREMENT_ID || '').trim();
+  const primaryGoogleTagId = googleAdsId || ga4Id;
+  if (!primaryGoogleTagId) return;
+
+  window.gtag = window.gtag || function () {
+    window.dataLayer.push(arguments);
+  };
+
+  if (!window.__meylinGoogleTagLoaded && !document.querySelector(`script[src*="googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}"]`)) {
+    window.__meylinGoogleTagLoaded = primaryGoogleTagId;
+    const script = document.createElement('script');
+    script.async = true;
+    script.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(primaryGoogleTagId)}`;
+    document.head.appendChild(script);
+  }
+
+  window.gtag('js', new Date());
+  if (googleAdsId) window.gtag('config', googleAdsId);
+  if (ga4Id && ga4Id !== googleAdsId) window.gtag('config', ga4Id);
+})();
 </script>
 
 <script src="https://unpkg.com/libphonenumber-js@1.10.24/bundle/libphonenumber-max.js"></script>
@@ -460,7 +506,7 @@ document.addEventListener('DOMContentLoaded', function () {
     phoneError.style.display = 'none';
   });
 
-  const form = document.getElementById('customCheckoutForm');
+  const form = document.getElementById('meylinOrderForm');
   if (form) {
     form.addEventListener('submit', function (event) {
       if (!validatePhone()) {
@@ -475,25 +521,25 @@ document.addEventListener('DOMContentLoaded', function () {
 <script>
 (function () {
   const API_BASE_URL = 'https://meylin-mono.onrender.com';
+  const META_PIXEL_ID = String(window.MEYLIN_META_PIXEL_ID || '').trim();
   const PREPAYMENT_AMOUNT = 300;
   const INTERNATIONAL_DELIVERY_FEE = 0;
-  const SCRIPT_VERSION = 'i18n-2026-06-18-1238';
+  const SCRIPT_VERSION = 'meylin-2026-09-03';
   const SHOPIFY_ROUTES_ROOT = window.Shopify?.routes?.root || '/';
-  const UPSELL_PRODUCTS = window.WOODEN_UPSELL_PRODUCTS || [
+  const UPSELL_PRODUCTS = window.MEYLIN_UPSELL_PRODUCTS || [
     // {
     //   handle: 'gift-packaging',
     //   description: 'Додамо красиве пакування до замовлення',
     // },
   ];
 
-  const form = document.querySelector('#customCheckoutForm');
+  const form = document.querySelector('#meylinOrderForm');
   const submitBtn = document.querySelector('#submit-btn');
   const amountField = document.querySelector('#amount');
   const productsList = document.querySelector('#products-list');
   const cartTotalEl = document.querySelector('#cart-total');
   const cartItemsCountEl = document.querySelector('#cart-items-count');
   let upsellSection = null;
-  let installmentPartCounts = [2, 3, 4];
 
   const TEXTS = {
     uk: {
@@ -555,11 +601,11 @@ document.addEventListener('DOMContentLoaded', function () {
       lastName: 'Прізвище',
       phone: 'Телефон',
       email: 'E-mail',
+      telegram: 'Telegram',
       comment: 'Коментар до замовлення',
       submit: 'Оформити замовлення',
       fullPayment: 'Повна оплата',
       prepayment: 'Передплата 300 грн',
-      installments: 'Оплата частинами',
       paymentMethod: 'Спосіб оплати',
       fullPaymentSubtitle: 'Оплата 100% вартості онлайн',
       fullPaymentBadge: 'Ви економите 2%+20 грн комісії',
@@ -567,12 +613,6 @@ document.addEventListener('DOMContentLoaded', function () {
       prepaymentCard: 'Передплата 300 ₴',
       prepaymentSubtitle: 'Решту суми — при отриманні',
       prepaymentBadge: 'Додатково 2%+20 грн комісії',
-      installmentsCard: 'Оплата частинами',
-      installmentsSubtitle: 'Підтвердження у застосунку monobank',
-      installmentsBadge: 'Покупка Частинами',
-      installmentsPartsLabel: 'Кількість платежів',
-      installmentsPartsOption: '{count} платежі',
-      installmentsRequestSent: 'Запит на Покупку Частинами надіслано у застосунок monobank. Підтвердіть оплату в застосунку.',
       orderSummaryTitle: 'Загальна сума',
       cartItemsLabel: 'Товарів у кошику',
       totalLabel: 'Сума',
@@ -636,11 +676,11 @@ document.addEventListener('DOMContentLoaded', function () {
       lastName: 'Last name',
       phone: 'Phone',
       email: 'E-mail',
+      telegram: 'Telegram',
       comment: 'Order comment',
       submit: 'Place order',
       fullPayment: 'Full payment',
       prepayment: 'Prepayment 300 UAH',
-      installments: 'Split payment',
       paymentMethod: 'Payment method',
       fullPaymentSubtitle: 'Pay 100% of the order online',
       fullPaymentBadge: 'You save 2% + 20 UAH commission',
@@ -648,97 +688,11 @@ document.addEventListener('DOMContentLoaded', function () {
       prepaymentCard: 'Prepayment 300 UAH',
       prepaymentSubtitle: 'Pay the rest on delivery',
       prepaymentBadge: 'Additional 2% + 20 UAH commission',
-      installmentsCard: 'Split payment',
-      installmentsSubtitle: 'Confirm in the monobank app',
-      installmentsBadge: 'monobank split payment',
-      installmentsPartsLabel: 'Number of payments',
-      installmentsPartsOption: '{count} payments',
-      installmentsRequestSent: 'The split payment request was sent to the monobank app. Confirm it in the app.',
       orderSummaryTitle: 'Order summary',
       cartItemsLabel: 'Items in cart',
       totalLabel: 'Total',
     },
-    pl: {
-      consent: 'Wyrażam zgodę na przetwarzanie moich danych osobowych',
-      shippingMethod: 'Sposób dostawy',
-      novaPoshta: 'Nova Poshta',
-      internationalDelivery: 'Dostawa za granicę',
-      branch: 'Oddział',
-      postomat: 'Paczkomat',
-      address: 'Adres',
-      cityNovaPoshta: 'Miasto (Nova Poshta)',
-      chooseCity: 'Wybierz miasto *',
-      chooseBranch: 'Wybierz oddział *',
-      choosePostomat: 'Wybierz paczkomat *',
-      courierAddressNote: 'Dostawa kurierska Nova Poshta pod wskazany adres',
-      deliveryAddress: 'Adres dostawy',
-      street: 'Ulica *',
-      house: 'Budynek',
-      housePlaceholder: 'Budynek *',
-      apartmentOffice: 'Mieszkanie / biuro',
-      apartmentOfficePlaceholder: 'Mieszkanie, biuro',
-      internationalNote: 'Dostawa zagraniczna zostanie ustalona przez menedżera po złożeniu zamówienia.',
-      internationalFeeNote: 'Dostawa zagraniczna zostanie ustalona przez menedżera',
-      country: 'Kraj',
-      chooseCountry: 'Wybierz kraj *',
-      city: 'Miasto',
-      yourCity: 'Twoje miasto *',
-      yourAddress: 'Twój adres *',
-      apartmentRoom: 'Mieszkanie / pokój',
-      apartmentRoomPlaceholder: 'Mieszkanie, pokój itd.',
-      postcode: 'Kod pocztowy',
-      postcodePlaceholder: 'Kod pocztowy *',
-      pcs: 'szt.',
-      cartLoadError: 'Nie udało się załadować koszyka',
-      upsellTitle: 'Dodaj do zamówienia',
-      add: 'Dodaj',
-      added: 'Dodano',
-      adding: 'Dodajemy...',
-      upsellNotFound: 'Nie znaleziono produktu dodatkowego',
-      addProductError: 'Nie udało się dodać produktu',
-      clearCartError: 'Nie udało się wyczyścić koszyka',
-      requestFailed: 'Żądanie nie powiodło się',
-      npTimeout: 'Serwer Nova Poshta odpowiada zbyt długo',
-      searchingCities: 'Szukamy miast...',
-      citiesPhoneError: 'Błąd miasta: odpowiedź nie została przetworzona na telefonie. Odśwież stronę lub spróbuj ponownie.',
-      cityNotFound: 'Nie znaleziono miasta',
-      citiesErrorPrefix: 'Błąd miasta',
-      searchingWarehouses: 'Szukamy oddziałów...',
-      warehousesPhoneError: 'Błąd oddziałów: odpowiedź nie została przetworzona na telefonie. Odśwież stronę lub spróbuj ponownie.',
-      warehouseNotFound: 'Nie znaleziono oddziału',
-      warehousesErrorPrefix: 'Błąd oddziałów',
-      emptyCart: 'Koszyk jest pusty',
-      creatingPayment: 'Tworzymy płatność...',
-      createPaymentError: 'Nie udało się utworzyć płatności',
-      clearingCart: 'Czyścimy koszyk...',
-      paymentCreateAlert: 'Błąd tworzenia płatności',
-      cartUnavailable: 'Koszyk jest niedostępny',
-      firstName: 'Imię',
-      lastName: 'Nazwisko',
-      phone: 'Telefon',
-      email: 'E-mail',
-      comment: 'Komentarz do zamówienia',
-      submit: 'Złóż zamówienie',
-      fullPayment: 'Pełna płatność',
-      prepayment: 'Przedpłata 300 UAH',
-      installments: 'Płatność w częściach',
-      paymentMethod: 'Sposób płatności',
-      fullPaymentSubtitle: 'Zapłać 100% wartości zamówienia online',
-      fullPaymentBadge: 'Oszczędzasz 2% + 20 UAH prowizji',
-      internationalDeliveryBadge: 'Dostawa zagraniczna zostanie ustalona przez menedżera',
-      prepaymentCard: 'Przedpłata 300 UAH',
-      prepaymentSubtitle: 'Pozostała kwota przy odbiorze',
-      prepaymentBadge: 'Dodatkowo 2% + 20 UAH prowizji',
-      installmentsCard: 'Płatność w częściach',
-      installmentsSubtitle: 'Potwierdź w aplikacji monobank',
-      installmentsBadge: 'Płatność w częściach monobank',
-      installmentsPartsLabel: 'Liczba płatności',
-      installmentsPartsOption: '{count} płatności',
-      installmentsRequestSent: 'Wniosek o płatność w częściach wysłano do aplikacji monobank. Potwierdź go w aplikacji.',
-      orderSummaryTitle: 'Podsumowanie zamówienia',
-      cartItemsLabel: 'Produktów w koszyku',
-      totalLabel: 'Suma',
-    },
+
   };
 
   let npCityInput = null;
@@ -767,7 +721,7 @@ document.addEventListener('DOMContentLoaded', function () {
     const formLocale = form?.dataset?.locale || form?.getAttribute('data-locale');
     const candidates = [
       formLocale,
-      window.WOODEN_CHECKOUT_LOCALE,
+      window.MEYLIN_CHECKOUT_LOCALE,
       params.get('locale'),
       params.get('language'),
       params.get('lang'),
@@ -808,19 +762,12 @@ document.addEventListener('DOMContentLoaded', function () {
       ['Повна оплата', t('fullPayment')],
       ['Full payment', t('fullPayment')],
       ['Pełna płatność', t('fullPayment')],
-      ['Оплата частинами', t('installmentsCard')],
-      ['Split payment', t('installmentsCard')],
-      ['Płatność w częściach', t('installmentsCard')],
       ['Оплата 100% вартості онлайн', t('fullPaymentSubtitle')],
       ['Pay 100% of the order online', t('fullPaymentSubtitle')],
       ['Zapłać 100% wartości zamówienia online', t('fullPaymentSubtitle')],
       ['Ви економите 2%+20 грн комісії', t('fullPaymentBadge')],
       ['You save 2% + 20 UAH commission', t('fullPaymentBadge')],
       ['Oszczędzasz 2% + 20 UAH prowizji', t('fullPaymentBadge')],
-      ['Передплата 500 ₴', t('prepaymentCard')],
-      ['Передплата 500 грн', t('prepaymentCard')],
-      ['Prepayment 500 UAH', t('prepaymentCard')],
-      ['Przedpłata 500 UAH', t('prepaymentCard')],
       ['Передплата 300 ₴', t('prepaymentCard')],
       ['Передплата 300 грн', t('prepaymentCard')],
       ['Prepayment 300 UAH', t('prepaymentCard')],
@@ -832,9 +779,6 @@ document.addEventListener('DOMContentLoaded', function () {
       ['Додатково 2%+20 грн комісії', t('prepaymentBadge')],
       ['Additional 2% + 20 UAH commission', t('prepaymentBadge')],
       ['Dodatkowo 2% + 20 UAH prowizji', t('prepaymentBadge')],
-      ['Підтвердження у застосунку monobank', t('installmentsSubtitle')],
-      ['Confirm in the monobank app', t('installmentsSubtitle')],
-      ['Potwierdź w aplikacji monobank', t('installmentsSubtitle')],
       ['Загальна сума', t('orderSummaryTitle')],
       ['Order summary', t('orderSummaryTitle')],
       ['Podsumowanie zamówienia', t('orderSummaryTitle')],
@@ -894,6 +838,7 @@ document.addEventListener('DOMContentLoaded', function () {
     setFieldLabel('input[name="last_name"], #last_name', 'lastName');
     setFieldLabel('input[name="phone"], #phone', 'phone');
     setFieldLabel('input[name="email"], #email', 'email');
+    setFieldLabel('input[name="telegram"], #telegram', 'telegram');
     setFieldLabel('textarea[name="comment"], #comment', 'comment');
 
     const fullPayment = form.querySelector('input[name="payment_type"][value="full"]')?.closest('label');
@@ -904,11 +849,6 @@ document.addEventListener('DOMContentLoaded', function () {
     const prepayment = form.querySelector('input[name="payment_type"][value="prepayment"]')?.closest('label');
     if (prepayment) prepayment.childNodes.forEach((node) => {
       if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) node.textContent = t('prepayment');
-    });
-
-    const installments = form.querySelector('input[name="payment_type"][value="installments"]')?.closest('label');
-    if (installments) installments.childNodes.forEach((node) => {
-      if (node.nodeType === Node.TEXT_NODE && node.textContent.trim()) node.textContent = t('installments');
     });
 
     if (submitBtn) submitBtn.textContent = t('submit');
@@ -959,99 +899,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return true;
   }
 
-  function normalizeInstallmentPartCounts(value) {
-    const items = Array.isArray(value) ? value : [];
-    const counts = items
-      .map((item) => Number(item))
-      .filter((item) => Number.isInteger(item) && item > 0);
-    return [...new Set(counts)].sort((a, b) => a - b);
-  }
-
-  function formatInstallmentPartsOption(count) {
-    return t('installmentsPartsOption').replace('{count}', String(count));
-  }
-
-  function getSelectedInstallmentPartsCount() {
-    const value = Number(form.querySelector('input[name="installments_parts_count"]')?.value || 0);
-    return installmentPartCounts.includes(value) ? value : installmentPartCounts[0] || 3;
-  }
-
-  function syncInstallmentPartsSelector(container, selectedCount) {
-    if (!container) return;
-    container.querySelectorAll('[data-parts-count]').forEach((button) => {
-      const count = Number(button.getAttribute('data-parts-count'));
-      button.classList.toggle('active', count === selectedCount);
-      button.setAttribute('aria-pressed', count === selectedCount ? 'true' : 'false');
-    });
-  }
-
-  function ensureInstallmentPartsSelector(card) {
-    if (!card) return;
-
-    const existing = card.querySelector('[data-installment-parts]');
-    if (existing) existing.remove();
-
-    const selectedCount = getSelectedInstallmentPartsCount();
-    const safeSelectedCount = installmentPartCounts.includes(selectedCount)
-      ? selectedCount
-      : installmentPartCounts[0] || 3;
-    const options = installmentPartCounts.map((count) => `
-      <button
-        type="button"
-        class="installment-parts-option${count === safeSelectedCount ? ' active' : ''}"
-        data-parts-count="${count}"
-        aria-pressed="${count === safeSelectedCount ? 'true' : 'false'}"
-      >${formatInstallmentPartsOption(count)}</button>
-    `).join('');
-
-    card.insertAdjacentHTML('beforeend', `
-      <div class="installment-parts" data-installment-parts>
-        <span class="installment-parts-label">${t('installmentsPartsLabel')}</span>
-        <div class="installment-parts-options">${options}</div>
-        <input type="hidden" name="installments_parts_count" value="${safeSelectedCount}">
-      </div>
-    `);
-
-    const container = card.querySelector('[data-installment-parts]');
-    const hiddenInput = container?.querySelector('input[name="installments_parts_count"]');
-    container?.querySelectorAll('[data-parts-count]').forEach((button) => {
-      button.addEventListener('click', function (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        const count = Number(button.getAttribute('data-parts-count'));
-        if (!installmentPartCounts.includes(count)) return;
-        if (hiddenInput) hiddenInput.value = String(count);
-        syncInstallmentPartsSelector(container, count);
-        selectPaymentType('installments');
-        trackCheckoutEvent('add_payment_info');
-      });
-    });
-
-  }
-
-  function updatePaymentCardText(card, titleKey, subtitleKey, badgeKey) {
-    if (!card) return;
-    const title = card.querySelector('.payment-card-title, [data-payment-title]');
-    const subtitle = card.querySelector('.payment-card-subtitle, [data-payment-subtitle]');
-    const badge = card.querySelector('.payment-card-badge, [data-payment-badge]');
-
-    if (title) title.textContent = t(titleKey);
-    if (subtitle) subtitle.textContent = t(subtitleKey);
-    if (badge) badge.textContent = t(badgeKey);
-
-    const textNodes = [];
-    const walker = document.createTreeWalker(card, NodeFilter.SHOW_TEXT, {
-      acceptNode(node) {
-        return node.textContent.trim() ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT;
-      },
-    });
-    while (walker.nextNode()) textNodes.push(walker.currentNode);
-
-    if (textNodes[0] && !title) textNodes[0].textContent = t(titleKey);
-    if (textNodes[1] && !subtitle) textNodes[1].textContent = t(subtitleKey);
-    if (textNodes[2] && !badge) textNodes[2].textContent = t(badgeKey);
-  }
-
   function removeInstallmentsPaymentOption() {
     const input = form.querySelector('input[name="payment_type"][value="installments"]');
     const label = input?.closest('label');
@@ -1063,51 +910,8 @@ document.addEventListener('DOMContentLoaded', function () {
     label?.remove();
   }
 
-  function ensureInstallmentsPaymentOption() {
-    const existingInput = form.querySelector('input[name="payment_type"][value="installments"]');
-    if (existingInput) {
-      const existingCard = existingInput.closest('label');
-      ensureInstallmentPartsSelector(existingCard);
-      return;
-    }
-
-    const sourceInput = form.querySelector('input[name="payment_type"][value="prepayment"]')
-      || form.querySelector('input[name="payment_type"][value="full"]');
-    const sourceLabel = sourceInput?.closest('label');
-    if (!sourceInput || !sourceLabel || !sourceLabel.parentNode) return;
-
-    const label = sourceLabel.cloneNode(true);
-    const input = label.querySelector('input[name="payment_type"]');
-    if (!input) return;
-
-    input.value = 'installments';
-    input.checked = false;
-    input.disabled = false;
-    input.id = 'payment-installments';
-    label.id = 'card-installments';
-    label.classList.remove('active');
-    updatePaymentCardText(label, 'installmentsCard', 'installmentsSubtitle', 'installmentsBadge');
-    ensureInstallmentPartsSelector(label);
-    setPaymentInputChangeHandler(input);
-
-    sourceLabel.parentNode.insertBefore(label, sourceLabel.nextSibling);
-  }
-
-  async function syncPaymentOptions() {
-    try {
-      const response = await fetch(`${API_BASE_URL}/api/payment-options`);
-      const data = await response.json().catch(() => ({}));
-      if (response.ok && data.monobankParts?.enabled) {
-        const counts = normalizeInstallmentPartCounts(data.monobankParts.partsCounts);
-        if (counts.length) installmentPartCounts = counts;
-        ensureInstallmentsPaymentOption();
-      } else {
-        removeInstallmentsPaymentOption();
-      }
-    } catch (error) {
-      console.warn('Payment options load failed:', error);
-      removeInstallmentsPaymentOption();
-    }
+  function syncPaymentOptions() {
+    removeInstallmentsPaymentOption();
   }
 
   function syncFullPaymentBadgeVisibility() {
@@ -1234,6 +1038,63 @@ document.addEventListener('DOMContentLoaded', function () {
     return match ? decodeURIComponent(match[1]) : '';
   }
 
+  function getInitializedMetaPixelIds() {
+    try {
+      if (typeof window.fbq !== 'function') return [];
+
+      const queue = Array.isArray(window.fbq.queue) ? window.fbq.queue : [];
+      const queuedPixelIds = queue
+        .filter((entry) => Array.isArray(entry) && entry[0] === 'init')
+        .map((entry) => String(entry[1] || '').trim())
+        .filter(Boolean);
+
+      if (typeof window.fbq.getState !== 'function') return queuedPixelIds;
+
+      const state = window.fbq.getState();
+      const pixels = typeof state?.pixels === 'function' ? state.pixels() : [];
+      const loadedPixelIds = pixels
+        .map((pixel) => {
+          if (typeof pixel?.get === 'function') return String(pixel.get('id') || '').trim();
+          return String(pixel?.id || '').trim();
+        })
+        .filter(Boolean);
+
+      return Array.from(new Set([...queuedPixelIds, ...loadedPixelIds]));
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function ensureMetaPixel() {
+    if (!META_PIXEL_ID || window.__meylinMetaPixelReady === META_PIXEL_ID) return;
+
+    if (typeof window.fbq !== 'function') {
+      (function (f, b, e, v, n, t, s) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = true;
+        n.version = '2.0';
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = true;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, 'script', 'https://connect.facebook.net/en_US/fbevents.js');
+    }
+
+    if (!getInitializedMetaPixelIds().includes(META_PIXEL_ID)) {
+      window.fbq('init', META_PIXEL_ID);
+    }
+
+    window.fbq('track', 'PageView');
+    window.__meylinMetaPixelReady = META_PIXEL_ID;
+  }
+
   function collectTrackingData() {
     const params = new URLSearchParams(window.location.search);
     const saved = readJsonStorage(TRACKING_STORAGE_KEY);
@@ -1294,6 +1155,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
     if (typeof window.gtag === 'function') {
       window.gtag('event', eventName, payload);
+      const googleAdsId = String(window.MEYLIN_GOOGLE_ADS_CONVERSION_ID || '').trim();
+      const purchaseLabel = String(window.MEYLIN_GOOGLE_ADS_PURCHASE_LABEL || '').trim();
+      if (eventName === 'purchase' && googleAdsId && purchaseLabel) {
+        window.gtag('event', 'conversion', {
+          send_to: `${googleAdsId}/${purchaseLabel}`,
+          value: payload.value,
+          currency: payload.currency,
+          transaction_id: String(extra.transaction_id || extra.order_id || ''),
+        });
+      }
     }
     if (typeof window.fbq === 'function') {
       const metaEvent = eventName === 'begin_checkout'
@@ -1354,18 +1225,18 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const style = document.createElement('style');
     style.textContent = `
-      #customCheckoutForm .shipping-type {
+      #meylinOrderForm .shipping-type {
         border: 1px solid #e2eee7;
         border-radius: 12px;
         padding: 16px;
         background: #f8faf7;
       }
-      #customCheckoutForm .shipping-type legend {
+      #meylinOrderForm .shipping-type legend {
         font-size: 16px;
         font-weight: 600;
         margin-bottom: 8px;
       }
-      #customCheckoutForm .shipping-type label {
+      #meylinOrderForm .shipping-type label {
         display: grid !important;
         grid-template-columns: auto minmax(0, 1fr) auto;
         align-items: center;
@@ -1377,7 +1248,7 @@ document.addEventListener('DOMContentLoaded', function () {
         background: #fff;
         gap: 10px;
       }
-      #customCheckoutForm .shipping-type label.active {
+      #meylinOrderForm .shipping-type label.active {
         border-color: #97C459;
         background: #EAF3DE;
       }
@@ -1400,7 +1271,7 @@ document.addEventListener('DOMContentLoaded', function () {
         height: 24px;
       }
       @media (max-width: 760px) {
-        #customCheckoutForm .shipping-type label {
+        #meylinOrderForm .shipping-type label {
           grid-template-columns: auto minmax(0, 1fr) 22px;
           min-height: 64px;
         }
@@ -1418,7 +1289,7 @@ document.addEventListener('DOMContentLoaded', function () {
         background: #eef8f2;
       }
       .delivery-panel[hidden] { display: none !important; }
-      #customCheckoutForm .personal-data-consent {
+      #meylinOrderForm .personal-data-consent {
         display: flex !important;
         align-items: flex-start;
         gap: 10px;
@@ -1434,7 +1305,7 @@ document.addEventListener('DOMContentLoaded', function () {
         cursor: pointer;
         text-align: left !important;
       }
-      #customCheckoutForm .personal-data-consent input {
+      #meylinOrderForm .personal-data-consent input {
         width: 18px !important;
         height: 18px !important;
         margin: 1px 0 0 !important;
@@ -1443,41 +1314,8 @@ document.addEventListener('DOMContentLoaded', function () {
         appearance: auto !important;
         -webkit-appearance: auto !important;
       }
-      #customCheckoutForm .personal-data-consent span {
+      #meylinOrderForm .personal-data-consent span {
         display: block;
-      }
-      .installment-parts {
-        grid-column: 1 / -1;
-        display: grid;
-        gap: 8px;
-        margin-top: 12px;
-      }
-      .installment-parts-label {
-        display: block;
-        color: #637381;
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .installment-parts-options {
-        display: flex;
-        flex-wrap: wrap;
-        gap: 8px;
-      }
-      .installment-parts-option {
-        min-height: 34px;
-        border: 1px solid #97C459;
-        border-radius: 999px;
-        padding: 6px 12px;
-        background: #fff;
-        color: #3B6D11;
-        font: inherit;
-        font-size: 13px;
-        font-weight: 700;
-        cursor: pointer;
-      }
-      .installment-parts-option.active {
-        background: #C7E89A;
-        color: #27500A;
       }
       .checkout-upsells {
         margin: 0 0 18px;
@@ -1782,8 +1620,14 @@ document.addEventListener('DOMContentLoaded', function () {
       input.closest('label')?.classList.toggle('active', input.checked);
     });
 
-    if (domesticFields) domesticFields.hidden = isInternational;
-    if (internationalFields) internationalFields.hidden = !isInternational;
+    if (domesticFields) {
+      domesticFields.hidden = isInternational;
+      domesticFields.style.display = isInternational ? 'none' : '';
+    }
+    if (internationalFields) {
+      internationalFields.hidden = !isInternational;
+      internationalFields.style.display = isInternational ? '' : 'none';
+    }
     if (npPickupFields) npPickupFields.hidden = isInternational || isAddressDelivery;
     if (npAddressFields) npAddressFields.hidden = isInternational || !isAddressDelivery;
 
@@ -1858,6 +1702,7 @@ document.addEventListener('DOMContentLoaded', function () {
     translateStaticTextNodes(document.body);
 
     setPaymentAmount();
+    ensureMetaPixel();
 
     if (!sessionStorage.getItem('meylin_begin_checkout_tracked')) {
       sessionStorage.setItem('meylin_begin_checkout_tracked', 'true');
@@ -2444,7 +2289,6 @@ document.addEventListener('DOMContentLoaded', function () {
     return {
       locale: CURRENT_LOCALE,
       payment_type: paymentType,
-      installments_parts_count: paymentType === 'installments' ? getSelectedInstallmentPartsCount() : undefined,
       amount: paymentType === 'prepayment' ? PREPAYMENT_AMOUNT : getCheckoutTotal(),
       cart_total: cartTotalAmount,
       cart_token: cart?.token || '',
@@ -2453,6 +2297,7 @@ document.addEventListener('DOMContentLoaded', function () {
         last_name: String(formData.get('last_name') || '').trim(),
         phone: String(formData.get('phone') || '').trim(),
         email: String(formData.get('email') || '').trim(),
+        telegram: String(formData.get('telegram') || '').trim(),
       },
       shipping_type: shippingType,
       shipping: shippingType === 'international'
@@ -2579,18 +2424,12 @@ document.addEventListener('DOMContentLoaded', function () {
       });
 
       const data = await response.json().catch(() => ({}));
-      if (!response.ok || (!data.invoiceUrl && data.paymentFlow !== 'monobank_parts')) {
+      if (!response.ok || !data.invoiceUrl) {
         throw new Error(data.details || data.error || t('createPaymentError'));
       }
 
       submitBtn.textContent = t('clearingCart');
       await clearCart();
-
-      if (data.paymentFlow === 'monobank_parts') {
-        alert(data.message || t('installmentsRequestSent'));
-        window.location.href = data.redirectUrl || shopifyRoute('/');
-        return;
-      }
 
       window.location.href = data.invoiceUrl;
     } catch (error) {
