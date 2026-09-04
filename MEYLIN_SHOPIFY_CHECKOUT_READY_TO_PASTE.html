@@ -339,11 +339,8 @@
         <div id="phone-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть вірний номер з кодом країни!</div>
 
         <label for="email">E-mail</label>
-        <input type="email" id="email" name="email">
+        <input type="email" id="email" name="email" required autocomplete="email">
         <div id="email-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть коректний email!</div>
-
-        <label for="telegram">Telegram</label>
-        <input type="text" id="telegram" name="telegram" autocomplete="off" placeholder="@username">
 
         <fieldset class="shipping-type">
           <legend>Спосіб доставки</legend>
@@ -468,8 +465,10 @@
 document.addEventListener('DOMContentLoaded', function () {
   const phoneInput = document.getElementById('phone');
   const phoneError = document.getElementById('phone-error-msg');
+  const emailInput = document.getElementById('email');
+  const emailError = document.getElementById('email-error-msg');
 
-  if (!phoneInput || !phoneError || !window.libphonenumber) return;
+  if (!phoneInput || !phoneError || !emailInput || !emailError || !window.libphonenumber) return;
 
   function validatePhone() {
     const rawPhone = phoneInput.value.trim();
@@ -500,18 +499,41 @@ document.addEventListener('DOMContentLoaded', function () {
     return true;
   }
 
+  function validateEmail() {
+    const rawEmail = emailInput.value.trim();
+
+    if (!rawEmail || !emailInput.validity.valid) {
+      emailInput.classList.add('error');
+      emailError.style.display = 'block';
+      return false;
+    }
+
+    emailInput.value = rawEmail;
+    emailInput.classList.remove('error');
+    emailError.style.display = 'none';
+    return true;
+  }
+
   phoneInput.addEventListener('blur', validatePhone);
   phoneInput.addEventListener('input', function () {
     phoneInput.classList.remove('error');
     phoneError.style.display = 'none';
   });
+  emailInput.addEventListener('blur', validateEmail);
+  emailInput.addEventListener('input', function () {
+    emailInput.classList.remove('error');
+    emailError.style.display = 'none';
+  });
 
   const form = document.getElementById('meylinOrderForm');
   if (form) {
     form.addEventListener('submit', function (event) {
-      if (!validatePhone()) {
+      const phoneValid = validatePhone();
+      const emailValid = validateEmail();
+
+      if (!phoneValid || !emailValid) {
         event.preventDefault();
-        phoneInput.focus();
+        (phoneValid ? emailInput : phoneInput).focus();
       }
     }, true);
   }
@@ -601,7 +623,6 @@ document.addEventListener('DOMContentLoaded', function () {
       lastName: 'Прізвище',
       phone: 'Телефон',
       email: 'E-mail',
-      telegram: 'Telegram',
       comment: 'Коментар до замовлення',
       submit: 'Оформити замовлення',
       fullPayment: 'Повна оплата',
@@ -676,7 +697,6 @@ document.addEventListener('DOMContentLoaded', function () {
       lastName: 'Last name',
       phone: 'Phone',
       email: 'E-mail',
-      telegram: 'Telegram',
       comment: 'Order comment',
       submit: 'Place order',
       fullPayment: 'Full payment',
@@ -838,7 +858,6 @@ document.addEventListener('DOMContentLoaded', function () {
     setFieldLabel('input[name="last_name"], #last_name', 'lastName');
     setFieldLabel('input[name="phone"], #phone', 'phone');
     setFieldLabel('input[name="email"], #email', 'email');
-    setFieldLabel('input[name="telegram"], #telegram', 'telegram');
     setFieldLabel('textarea[name="comment"], #comment', 'comment');
 
     const fullPayment = form.querySelector('input[name="payment_type"][value="full"]')?.closest('label');
@@ -2366,7 +2385,6 @@ document.addEventListener('DOMContentLoaded', function () {
         last_name: String(formData.get('last_name') || '').trim(),
         phone: String(formData.get('phone') || '').trim(),
         email: String(formData.get('email') || '').trim(),
-        telegram: String(formData.get('telegram') || '').trim(),
       },
       shipping_type: shippingType,
       shipping: shippingType === 'international'
