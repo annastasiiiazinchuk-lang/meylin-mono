@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 const stringish = z.union([z.string(), z.number()]).optional();
+const requiredEmail = z.string().trim().min(1, 'Email is required').email('Invalid email');
 
 export const checkoutPayloadSchema = z.object({
   locale: z.string().optional(),
@@ -13,7 +14,7 @@ export const checkoutPayloadSchema = z.object({
     first_name: z.string().optional(),
     last_name: z.string().optional(),
     phone: z.string().optional(),
-    email: z.string().email().optional().or(z.literal('')),
+    email: requiredEmail,
   }).default({}),
   shipping_type: z.enum(['ukraine', 'international']).default('ukraine'),
   shipping: z.object({

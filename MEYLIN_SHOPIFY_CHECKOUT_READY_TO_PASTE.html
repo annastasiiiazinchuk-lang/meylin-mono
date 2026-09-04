@@ -469,6 +469,17 @@
 
 <script>
 (() => {
+  function getCheckoutEmailInput() {
+    const form = document.getElementById('meylinOrderForm');
+    if (!form) return null;
+    normalizeCheckoutContactFields();
+    return form.querySelector('input[name="email"], input[type="email"], #email');
+  }
+
+  function getCheckoutEmailError() {
+    return document.getElementById('email-error-msg');
+  }
+
   function normalizeCheckoutContactFields() {
     const form = document.getElementById('meylinOrderForm');
     if (!form) return;
@@ -488,13 +499,76 @@
       .forEach((element) => element.remove());
   }
 
-  normalizeCheckoutContactFields();
-  if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', normalizeCheckoutContactFields);
+  function validateRequiredCheckoutEmail() {
+    const emailInput = getCheckoutEmailInput();
+    const emailError = getCheckoutEmailError();
+    if (!emailInput) return false;
+
+    const rawEmail = emailInput.value.trim();
+    emailInput.value = rawEmail;
+    emailInput.setCustomValidity('');
+
+    if (!rawEmail || !emailInput.validity.valid) {
+      emailInput.setCustomValidity('Введіть коректний email');
+      emailInput.classList.add('error');
+      if (emailError) emailError.style.display = 'block';
+      emailInput.reportValidity?.();
+      emailInput.focus();
+      return false;
+    }
+
+    emailInput.classList.remove('error');
+    if (emailError) emailError.style.display = 'none';
+    return true;
   }
-  window.addEventListener('load', normalizeCheckoutContactFields);
-  setTimeout(normalizeCheckoutContactFields, 250);
-  setTimeout(normalizeCheckoutContactFields, 1000);
+
+  function bindRequiredEmailSubmitGuard() {
+    const form = document.getElementById('meylinOrderForm');
+    const emailInput = getCheckoutEmailInput();
+    const emailError = getCheckoutEmailError();
+
+    if (emailInput && !emailInput.dataset.emailRequiredBound) {
+      emailInput.dataset.emailRequiredBound = 'true';
+      emailInput.addEventListener('input', () => {
+        emailInput.setCustomValidity('');
+        emailInput.classList.remove('error');
+        if (emailError) emailError.style.display = 'none';
+      });
+    }
+
+    if (!form || form.dataset.emailSubmitGuardBound === 'true') return;
+    form.dataset.emailSubmitGuardBound = 'true';
+    form.addEventListener('submit', (event) => {
+      if (!validateRequiredCheckoutEmail()) {
+        event.preventDefault();
+        event.stopImmediatePropagation();
+      }
+    }, true);
+  }
+
+  window.meylinNormalizeCheckoutContactFields = normalizeCheckoutContactFields;
+  window.meylinValidateRequiredCheckoutEmail = validateRequiredCheckoutEmail;
+
+  normalizeCheckoutContactFields();
+  bindRequiredEmailSubmitGuard();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => {
+      normalizeCheckoutContactFields();
+      bindRequiredEmailSubmitGuard();
+    });
+  }
+  window.addEventListener('load', () => {
+    normalizeCheckoutContactFields();
+    bindRequiredEmailSubmitGuard();
+  });
+  setTimeout(() => {
+    normalizeCheckoutContactFields();
+    bindRequiredEmailSubmitGuard();
+  }, 250);
+  setTimeout(() => {
+    normalizeCheckoutContactFields();
+    bindRequiredEmailSubmitGuard();
+  }, 1000);
 })();
 
 document.addEventListener('DOMContentLoaded', function () {
@@ -503,7 +577,7 @@ document.addEventListener('DOMContentLoaded', function () {
   const emailInput = document.getElementById('email');
   const emailError = document.getElementById('email-error-msg');
 
-  if (!phoneInput || !phoneError || !emailInput || !emailError || !window.libphonenumber) return;
+  if (!phoneInput || !phoneError || !emailInput || !emailError) return;
 
   function validatePhone() {
     const rawPhone = phoneInput.value.trim();
@@ -517,7 +591,7 @@ document.addEventListener('DOMContentLoaded', function () {
     let phoneNumber;
 
     try {
-      phoneNumber = window.libphonenumber.parsePhoneNumberFromString(rawPhone, 'UA');
+      phoneNumber = window.libphonenumber?.parsePhoneNumberFromString(rawPhone, 'UA');
     } catch {
       phoneNumber = null;
     }
@@ -535,18 +609,10 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function validateEmail() {
-    const rawEmail = emailInput.value.trim();
-
-    if (!rawEmail || !emailInput.validity.valid) {
-      emailInput.classList.add('error');
-      emailError.style.display = 'block';
-      return false;
+    if (typeof window.meylinValidateRequiredCheckoutEmail === 'function') {
+      return window.meylinValidateRequiredCheckoutEmail();
     }
-
-    emailInput.value = rawEmail;
-    emailInput.classList.remove('error');
-    emailError.style.display = 'none';
-    return true;
+    return false;
   }
 
   phoneInput.addEventListener('blur', validatePhone);
@@ -2404,6 +2470,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function collectPayload() {
     const formData = new FormData(form);
+    const emailInput = form.querySelector('input[name="email"], input[type="email"], #email');
+    const email = String(emailInput?.value || formData.get('email') || '').trim();
     const shippingType = String(formData.get('shipping_type') || 'ukraine');
     const paymentType = getPaymentType();
     const npDeliveryType = String(formData.get('np_delivery_type') || 'branch');
@@ -2419,7 +2487,7 @@ document.addEventListener('DOMContentLoaded', function () {
         first_name: String(formData.get('first_name') || '').trim(),
         last_name: String(formData.get('last_name') || '').trim(),
         phone: String(formData.get('phone') || '').trim(),
-        email: String(formData.get('email') || '').trim(),
+        email,
       },
       shipping_type: shippingType,
       shipping: shippingType === 'international'
@@ -2526,6 +2594,10 @@ document.addEventListener('DOMContentLoaded', function () {
   form.addEventListener('submit', async function (event) {
     event.preventDefault();
 
+    if (
+      typeof window.meylinValidateRequiredCheckoutEmail === 'function'
+      && !window.meylinValidateRequiredCheckoutEmail()
+    ) return;
     if (!form.reportValidity()) return;
     if (!cart) await loadCart();
     if (!cart || cart.item_count === 0) {
@@ -2547,7 +2619,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.invoiceUrl) {
-        throw new Error(data.details || data.error || t('createPaymentError'));
+        throw new Error(data.message || data.error || t('createPaymentError'));
       }
 
       savePendingPaymentForPurchase(data);
