@@ -477,7 +477,28 @@ document.addEventListener('DOMContentLoaded', function () {
     telegramInput.remove();
   }
 
+  function removeDeprecatedContactFields() {
+    const form = document.getElementById('meylinOrderForm');
+    const emailInput = document.getElementById('email') || form?.querySelector('input[name="email"]');
+    const shippingSection = form?.querySelector('.shipping-type');
+
+    if (!form || !emailInput || !shippingSection) return;
+
+    let node = emailInput.nextSibling;
+    while (node && node !== shippingSection) {
+      const nextNode = node.nextSibling;
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node;
+        if (element.id !== 'email-error-msg') element.remove();
+      }
+      node = nextNode;
+    }
+  }
+
   removeDeprecatedTelegramField();
+  removeDeprecatedContactFields();
+  setTimeout(removeDeprecatedContactFields, 250);
+  setTimeout(removeDeprecatedContactFields, 1000);
 
   const phoneInput = document.getElementById('phone');
   const phoneError = document.getElementById('phone-error-msg');
