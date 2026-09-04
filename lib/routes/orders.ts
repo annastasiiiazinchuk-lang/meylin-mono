@@ -33,7 +33,7 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
 
     return json({
       error: 'Invalid checkout payload',
-      message: isEmailError ? 'Введіть коректний email' : 'Перевірте дані форми',
+      message: isEmailError ? 'Введіть, будь ласка, e-mail' : 'Перевірте дані форми',
       details: parsed.error.flatten(),
     }, 400);
   }

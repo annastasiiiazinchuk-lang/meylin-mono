@@ -346,7 +346,7 @@
 
         <label for="email">E-mail</label>
         <input type="email" id="email" name="email" required autocomplete="email">
-        <div id="email-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть коректний email!</div>
+        <div id="email-error-msg" style="color:#e24b4a;font-size:13px;margin-top:-16px;margin-bottom:16px;display:none;">Введіть, будь ласка, e-mail</div>
 
         <fieldset class="shipping-type">
           <legend>Спосіб доставки</legend>
@@ -480,6 +480,11 @@
     return document.getElementById('email-error-msg');
   }
 
+  function focusCheckoutEmailInput(emailInput) {
+    emailInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    setTimeout(() => emailInput.focus(), 250);
+  }
+
   function normalizeCheckoutContactFields() {
     const form = document.getElementById('meylinOrderForm');
     if (!form) return;
@@ -509,11 +514,15 @@
     emailInput.setCustomValidity('');
 
     if (!rawEmail || !emailInput.validity.valid) {
-      emailInput.setCustomValidity('Введіть коректний email');
+      const message = rawEmail ? 'Введіть коректний e-mail' : 'Введіть, будь ласка, e-mail';
+      emailInput.setCustomValidity(message);
       emailInput.classList.add('error');
-      if (emailError) emailError.style.display = 'block';
-      emailInput.reportValidity?.();
-      emailInput.focus();
+      if (emailError) {
+        emailError.textContent = message;
+        emailError.style.display = 'block';
+      }
+      focusCheckoutEmailInput(emailInput);
+      setTimeout(() => emailInput.reportValidity?.(), 260);
       return false;
     }
 
@@ -2619,6 +2628,12 @@ document.addEventListener('DOMContentLoaded', function () {
 
       const data = await response.json().catch(() => ({}));
       if (!response.ok || !data.invoiceUrl) {
+        if (String(data.message || data.error || '').toLowerCase().includes('email')) {
+          window.meylinValidateRequiredCheckoutEmail?.();
+          submitBtn.disabled = false;
+          submitBtn.textContent = previousText;
+          return;
+        }
         throw new Error(data.message || data.error || t('createPaymentError'));
       }
 

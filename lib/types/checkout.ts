@@ -1,7 +1,9 @@
 import { z } from 'zod';
 
 const stringish = z.union([z.string(), z.number()]).optional();
-const requiredEmail = z.string().trim().min(1, 'Email is required').email('Invalid email');
+const requiredEmail = z.string().trim()
+  .min(1, 'Введіть, будь ласка, e-mail')
+  .email('Введіть коректний e-mail');
 
 export const checkoutPayloadSchema = z.object({
   locale: z.string().optional(),
