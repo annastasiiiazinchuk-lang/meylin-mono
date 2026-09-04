@@ -42,7 +42,8 @@
   }
   #meylinOrderForm label[for="telegram"],
   #meylinOrderForm input[name="telegram"],
-  #meylinOrderForm #telegram {
+  #meylinOrderForm #telegram,
+  #meylinOrderForm input[name="email"] + input[name="email"] {
     display: none !important;
   }
 
@@ -467,39 +468,36 @@
 <script src="https://unpkg.com/libphonenumber-js@1.10.24/bundle/libphonenumber-max.js"></script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  function removeDeprecatedTelegramField() {
-    const telegramInput = document.getElementById('telegram') || document.querySelector('input[name="telegram"]');
-    if (!telegramInput) return;
-
-    const telegramLabel = document.querySelector('label[for="telegram"]');
-    if (telegramLabel) telegramLabel.remove();
-    telegramInput.remove();
-  }
-
-  function removeDeprecatedContactFields() {
+(() => {
+  function normalizeCheckoutContactFields() {
     const form = document.getElementById('meylinOrderForm');
-    const emailInput = document.getElementById('email') || form?.querySelector('input[name="email"]');
-    const shippingSection = form?.querySelector('.shipping-type');
+    if (!form) return;
 
-    if (!form || !emailInput || !shippingSection) return;
-
-    let node = emailInput.nextSibling;
-    while (node && node !== shippingSection) {
-      const nextNode = node.nextSibling;
-      if (node.nodeType === Node.ELEMENT_NODE) {
-        const element = node;
-        if (element.id !== 'email-error-msg') element.remove();
-      }
-      node = nextNode;
+    const emailInputs = Array.from(form.querySelectorAll('input[name="email"], input[type="email"], #email'));
+    const primaryEmail = emailInputs[0];
+    if (primaryEmail) {
+      primaryEmail.type = 'email';
+      primaryEmail.id = 'email';
+      primaryEmail.name = 'email';
+      primaryEmail.required = true;
+      primaryEmail.autocomplete = 'email';
     }
+
+    emailInputs.slice(1).forEach((input) => input.remove());
+    form.querySelectorAll('label[for="telegram"], input[name="telegram"], #telegram')
+      .forEach((element) => element.remove());
   }
 
-  removeDeprecatedTelegramField();
-  removeDeprecatedContactFields();
-  setTimeout(removeDeprecatedContactFields, 250);
-  setTimeout(removeDeprecatedContactFields, 1000);
+  normalizeCheckoutContactFields();
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', normalizeCheckoutContactFields);
+  }
+  window.addEventListener('load', normalizeCheckoutContactFields);
+  setTimeout(normalizeCheckoutContactFields, 250);
+  setTimeout(normalizeCheckoutContactFields, 1000);
+})();
 
+document.addEventListener('DOMContentLoaded', function () {
   const phoneInput = document.getElementById('phone');
   const phoneError = document.getElementById('phone-error-msg');
   const emailInput = document.getElementById('email');
