@@ -43,7 +43,8 @@
   #meylinOrderForm label[for="telegram"],
   #meylinOrderForm input[name="telegram"],
   #meylinOrderForm #telegram,
-  #meylinOrderForm input[name="email"] + input[name="email"] {
+  #meylinOrderForm input[name="email"] ~ input[name="email"],
+  #meylinOrderForm #email-error-msg ~ #email-error-msg {
     display: none !important;
   }
 
@@ -500,6 +501,7 @@
     }
 
     emailInputs.slice(1).forEach((input) => input.remove());
+    Array.from(form.querySelectorAll('#email-error-msg')).slice(1).forEach((element) => element.remove());
     form.querySelectorAll('label[for="telegram"], input[name="telegram"], #telegram')
       .forEach((element) => element.remove());
   }
