@@ -39,6 +39,19 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
   }
 
   const body = parsed.data;
+  const requestUserAgent = request.headers.get('user-agent') || '';
+  const requestPageUrl = request.headers.get('referer') || request.headers.get('origin') || '';
+  const requestIp =
+    request.headers.get('cf-connecting-ip') ||
+    request.headers.get('x-real-ip') ||
+    request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
+    '';
+  body.tracking = {
+    ...(body.tracking || body.utm || {}),
+    user_agent: String((body.tracking || body.utm || {}).user_agent || requestUserAgent).trim(),
+    page_url: String((body.tracking || body.utm || {}).page_url || requestPageUrl).trim(),
+    client_ip_address: String((body.tracking || body.utm || {}).client_ip_address || requestIp).trim(),
+  };
 
   try {
     const amount = getPaymentAmount(body);
