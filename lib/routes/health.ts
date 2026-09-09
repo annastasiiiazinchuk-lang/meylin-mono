@@ -22,6 +22,14 @@ export async function handleHealth(): Promise<Response> {
     metaReady: Boolean(env.metaPixelId && env.metaAccessToken),
     ga4ServerReady: Boolean(env.ga4MeasurementId && env.ga4ApiSecret),
     sitniksReady: Boolean(env.sitniksApiToken),
+    sitniksPaymentReady: Boolean(env.sitniksApiToken && env.sitniksSettlementAccountId > 0),
+    sitniksReceiptsEnabled: env.sitniksReceiptsEnabled,
+    sitniksCashRegisterReady: env.sitniksCashRegisterId > 0,
+    sitniksReceiptsReady: Boolean(
+      env.sitniksApiToken &&
+      env.sitniksReceiptsEnabled &&
+      env.sitniksCashRegisterId > 0
+    ),
     monobankPartsReady: Boolean(env.monoPartsEnabled && env.monoPartsStoreId && env.monoPartsSecret),
   });
 }
