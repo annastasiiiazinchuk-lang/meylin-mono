@@ -23,6 +23,7 @@ import {
   paymentToMetadata,
 } from '../services/payments/payment-store';
 import type { Payment } from '@prisma/client';
+import { sendServerSidePurchaseEvents } from '../services/tracking/purchase';
 
 export async function handleMonobankWebhook(request: Request): Promise<Response> {
   let body: MonobankWebhookBody;
@@ -99,6 +100,9 @@ export async function handleMonobankPartsWebhook(request: Request): Promise<Resp
 
     const metadata = paymentToMetadata(updatedPayment);
     await syncShopifyAfterMonobankSuccess(metadata, webhookBody);
+    if (metadata) {
+      await sendServerSidePurchaseEvents(metadata, webhookBody);
+    }
 
     console.log('[Monobank parts] Completed and synced:', {
       paymentId: payment.id,

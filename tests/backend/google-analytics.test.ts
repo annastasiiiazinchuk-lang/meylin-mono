@@ -70,4 +70,36 @@ describe('Google Analytics Measurement Protocol', () => {
       },
     ]);
   });
+
+  test('builds a purchase payload even when GA client id is missing', () => {
+    const payment: StoredPaymentMetadata = {
+      shopifyOrderId: 7243745919168,
+      shopifyOrderName: '#1486',
+      reference: 'shopify-7243745919168-1788445780803',
+      amount: 3990,
+      paymentType: 'full',
+      customer: {
+        first_name: 'Test',
+        last_name: 'Customer',
+        phone: '+380682345729',
+        email: 'test@example.com',
+      },
+      tracking: {},
+      cartTotal: 3990,
+      goods: [],
+    };
+    const webhookBody: MonobankWebhookBody = {
+      invoiceId: '260903EvE3BBYYGZWRi5',
+      status: 'success',
+      amount: 399000,
+      finalAmount: 399000,
+    };
+
+    const payload = buildGa4PurchasePayload(payment, webhookBody);
+
+    expect(payload?.client_id).toMatch(/^\d+\.\d+$/);
+    expect(payload?.events[0]?.name).toBe('purchase');
+    expect(payload?.events[0]?.params.transaction_id).toBe('260903EvE3BBYYGZWRi5');
+    expect(payload?.events[0]?.params.value).toBe(3990);
+  });
 });

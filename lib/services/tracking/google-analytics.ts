@@ -64,6 +64,15 @@ function getGclidFromTracking(tracking: Record<string, unknown>): string {
   return parts.length >= 3 ? parts.slice(2).join('.') : '';
 }
 
+function buildFallbackClientId(payment: StoredPaymentMetadata, webhookBody: MonobankWebhookBody): string {
+  const stableId =
+    asString(payment.shopifyOrderId) ||
+    asString(payment.reference) ||
+    asString(webhookBody.invoiceId);
+  const numericPart = stableId.replace(/\D/g, '').slice(-10) || String(Date.now()).slice(-10);
+  return `${numericPart}.${Math.floor(Date.now() / 1000)}`;
+}
+
 function buildGa4Items(payment: StoredPaymentMetadata): Ga4Item[] {
   const goods = Array.isArray(payment.goods) ? payment.goods : [];
 
@@ -80,14 +89,13 @@ export function buildGa4PurchasePayload(
   webhookBody: MonobankWebhookBody,
 ): Ga4PurchasePayload | null {
   const tracking = payment.tracking || {};
-  const clientId = normalizeGaClientId(getTrackingValue(
+  const trackedClientId = normalizeGaClientId(getTrackingValue(
     tracking,
     'ga_client_id',
     'ga_cookie',
     'client_id',
   ));
-
-  if (!clientId) return null;
+  const clientId = trackedClientId || buildFallbackClientId(payment, webhookBody);
 
   const sessionId = normalizeGaSessionId(getTrackingValue(
     tracking,
@@ -124,6 +132,13 @@ export function buildGa4PurchasePayload(
     if (value) params[key] = value;
   });
 
+  if (!trackedClientId) {
+    console.warn('Google GA4 Purchase using fallback client_id:', {
+      invoiceId: transactionId,
+      shopifyOrderId: payment.shopifyOrderId,
+    });
+  }
+
   return {
     client_id: clientId,
     user_id: payment.shopifyOrderId ? String(payment.shopifyOrderId) : undefined,
@@ -144,10 +159,7 @@ export async function sendGa4PurchaseEvent(
   if (!env.ga4MeasurementId || !env.ga4ApiSecret) return;
 
   const payload = buildGa4PurchasePayload(payment, webhookBody);
-  if (!payload) {
-    console.warn('Google GA4 Purchase skipped: missing GA client_id');
-    return;
-  }
+  if (!payload) return;
 
   const response = await fetch(
     `https://www.google-analytics.com/mp/collect?measurement_id=${encodeURIComponent(env.ga4MeasurementId)}&api_secret=${encodeURIComponent(env.ga4ApiSecret)}`,
