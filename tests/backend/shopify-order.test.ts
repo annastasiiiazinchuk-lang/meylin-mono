@@ -76,9 +76,12 @@ describe('Shopify order mapping', () => {
 
   test('custom checkout orders do not add Shopify taxes', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
+    const lineItems = payload.order.line_items as Array<Record<string, unknown>>;
 
     expect(payload.order.tax_exempt).toBe(true);
     expect(payload.order.taxes_included).toBe(false);
+    expect(lineItems[0].taxable).toBe(false);
+    expect(lineItems[0].tax_lines).toEqual([]);
   });
 
   test('passes product engraving properties to Shopify line items', () => {
@@ -123,9 +126,13 @@ describe('Shopify order mapping', () => {
 
   test('prepayment order starts pending with not_paid_300 tag and no discount before payment', () => {
     const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'prepayment' }, 200);
+    const lineItems = payload.order.line_items as Array<Record<string, unknown>>;
+
     expect(payload.order.financial_status).toBe('pending');
     expect(payload.order.tags).toBe('not_paid_300');
     expect(payload.order.discount_codes).toBeUndefined();
+    expect(lineItems[0].taxable).toBe(false);
+    expect(lineItems[0].tax_lines).toEqual([]);
   });
 
   test('prepayment after payment keeps financial status unchanged and sets paid tag', () => {

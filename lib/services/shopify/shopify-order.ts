@@ -140,7 +140,11 @@ export function buildLineItems(body: CheckoutPayload) {
   return (body.goods || []).map((item) => {
     const variantId = asNumber(item.variant_id);
     const quantity = Math.max(1, Math.round(asNumber(item.quantity) || 1));
-    const lineItem: Record<string, unknown> = { quantity };
+    const lineItem: Record<string, unknown> = {
+      quantity,
+      taxable: false,
+      tax_lines: [],
+    };
 
     if (variantId) {
       lineItem.variant_id = variantId;
