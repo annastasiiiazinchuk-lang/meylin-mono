@@ -16,16 +16,6 @@ interface ShopifyRestOrder {
   financial_status?: string;
 }
 
-type ShopifyGraphqlUserError = {
-  field?: string[];
-  message: string;
-};
-
-type ShopifyGraphqlResponse<T> = {
-  data?: T;
-  errors?: { message: string }[];
-};
-
 const INTERNATIONAL_DELIVERY_LABEL = 'Міжнародна доставка';
 
 const COUNTRY_CODE_BY_NAME: Record<string, string> = {
@@ -111,37 +101,6 @@ export async function shopifyRequest<T = Record<string, unknown>>(
   return parseJsonObject<T>(text, 'Shopify');
 }
 
-async function shopifyGraphqlRequest<T>(
-  query: string,
-  variables: Record<string, unknown>,
-): Promise<T> {
-  const accessToken = await getShopifyAccessToken();
-  const response = await fetch(shopifyUrl('/graphql.json'), {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Shopify-Access-Token': accessToken,
-    },
-    body: JSON.stringify({ query, variables }),
-  });
-
-  const text = await response.text();
-  if (!response.ok) throw new Error(`Shopify GraphQL error ${response.status}: ${text}`);
-
-  const parsed = parseJsonObject<ShopifyGraphqlResponse<T>>(text, 'Shopify GraphQL');
-  if (parsed.errors?.length) {
-    throw new Error(`Shopify GraphQL error: ${parsed.errors.map((error) => error.message).join('; ')}`);
-  }
-  if (!parsed.data) throw new Error('Shopify GraphQL response missing data');
-  return parsed.data;
-}
-
-function throwOnUserErrors(action: string, userErrors?: ShopifyGraphqlUserError[]) {
-  if (userErrors?.length) {
-    throw new Error(`${action}: ${userErrors.map((error) => error.message).join('; ')}`);
-  }
-}
-
 export function getCartTotal(body: CheckoutPayload): number {
   return asNumber(body.cart_total) || asNumber(body.amount);
 }
@@ -177,6 +136,11 @@ function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): str
 function legacyDeliveryMethodLabel(deliveryMethod: string): string {
   if (deliveryMethod === 'address') return 'Адресна доставка';
   return 'Відділення / Поштомат';
+}
+
+function formatPaymentAttributeAmount(amount: number): string {
+  const rounded = Math.round(asNumber(amount) * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
 }
 
 function buildLegacyUtmValue(body: CheckoutPayload): string {
@@ -460,6 +424,10 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     note_attributes: [
       { name: 'payment_type', value: paymentType },
       { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
+      { name: 'payment_status', value: 'unpaid' },
+      { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
+      { name: 'Сплата', value: '0' },
+      { name: 'Paid amount', value: '0' },
       ...buildShippingNoteAttributes(body),
       ...buildLegacyIntegrationNoteAttributes(body, paymentAmount),
     ].filter((attribute) => attribute.value),
@@ -512,6 +480,13 @@ export function buildOrderUpdateAfterPayment(
 ) {
   const isPrepayment = paymentType === 'prepayment';
   const normalizedPaymentType = normalizePaymentTypeForShopify(paymentType);
+  const paidAmount = formatPaymentAttributeAmount(amount);
+  const paymentStatus = isPrepayment ? 'partially_paid' : 'paid';
+  const paymentLabel = isPrepayment
+    ? 'Передплата Monobank'
+    : paymentType === 'installments'
+      ? 'Покупка частинами Monobank'
+      : 'Monobank';
   const noteAttributeByName = new Map<string, string>();
 
   for (const attribute of existingNoteAttributes) {
@@ -521,6 +496,15 @@ export function buildOrderUpdateAfterPayment(
   }
 
   noteAttributeByName.set('payment_type', normalizedPaymentType);
+  noteAttributeByName.set('payment_status', paymentStatus);
+  noteAttributeByName.set('Payment', paymentLabel);
+  noteAttributeByName.set('Сплата', paidAmount);
+  noteAttributeByName.set('Paid amount', paidAmount);
+  noteAttributeByName.set('monobank_paid_amount', paidAmount);
+  if (invoiceId) noteAttributeByName.set('monobank_invoice_id', invoiceId);
+  if (!noteAttributeByName.has('Сума') && !isPrepayment) {
+    noteAttributeByName.set('Сума', paidAmount);
+  }
 
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
@@ -529,124 +513,12 @@ export function buildOrderUpdateAfterPayment(
 
   if (isPrepayment) {
     orderUpdate.tags = 'prepayment_300_paid';
+    orderUpdate.financial_status = 'partially_paid';
   } else {
     orderUpdate.financial_status = 'paid';
   }
 
   return orderUpdate;
-}
-
-async function applyPaidPrepaymentDiscount(orderId: number, amount: number): Promise<void> {
-  if (Math.round(amount) !== PREPAYMENT_AMOUNT) {
-    console.log('Skipping prepayment discount because paid amount is not exactly prepayment amount:', {
-      orderId,
-      amount,
-      expectedAmount: PREPAYMENT_AMOUNT,
-    });
-    return;
-  }
-
-  const orderGid = `gid://shopify/Order/${orderId}`;
-  const beginData = await shopifyGraphqlRequest<{
-    orderEditBegin: {
-      calculatedOrder?: {
-        id: string;
-        lineItems: {
-          edges: Array<{ node: { id: string; quantity: number } }>;
-        };
-      };
-      userErrors: ShopifyGraphqlUserError[];
-    };
-  }>(
-    `mutation BeginOrderEdit($id: ID!) {
-      orderEditBegin(id: $id) {
-        calculatedOrder {
-          id
-          lineItems(first: 50) {
-            edges {
-              node {
-                id
-                quantity
-              }
-            }
-          }
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }`,
-    { id: orderGid },
-  );
-
-  throwOnUserErrors('Shopify order edit begin failed', beginData.orderEditBegin.userErrors);
-  const calculatedOrder = beginData.orderEditBegin.calculatedOrder;
-  const firstLineItemId = calculatedOrder?.lineItems.edges[0]?.node.id;
-  if (!calculatedOrder?.id || !firstLineItemId) {
-    throw new Error(`Shopify order edit failed: order ${orderId} has no editable line items`);
-  }
-
-  const discountData = await shopifyGraphqlRequest<{
-    orderEditAddLineItemDiscount: {
-      calculatedLineItem?: { id: string };
-      userErrors: ShopifyGraphqlUserError[];
-    };
-  }>(
-    `mutation AddPrepaymentDiscount($id: ID!, $lineItemId: ID!, $discount: OrderEditAppliedDiscountInput!) {
-      orderEditAddLineItemDiscount(id: $id, lineItemId: $lineItemId, discount: $discount) {
-        calculatedLineItem {
-          id
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }`,
-    {
-      id: calculatedOrder.id,
-      lineItemId: firstLineItemId,
-      discount: {
-        fixedValue: {
-          amount: PREPAYMENT_AMOUNT.toFixed(2),
-          currencyCode: 'UAH',
-        },
-        description: 'prepayment_300_paid',
-      },
-    },
-  );
-
-  throwOnUserErrors(
-    'Shopify prepayment discount failed',
-    discountData.orderEditAddLineItemDiscount.userErrors,
-  );
-
-  const commitData = await shopifyGraphqlRequest<{
-    orderEditCommit: {
-      order?: { id: string };
-      userErrors: ShopifyGraphqlUserError[];
-    };
-  }>(
-    `mutation CommitOrderEdit($id: ID!) {
-      orderEditCommit(id: $id, notifyCustomer: false, staffNote: "Prepayment 300 UAH paid via monobank") {
-        order {
-          id
-        }
-        userErrors {
-          field
-          message
-        }
-      }
-    }`,
-    { id: calculatedOrder.id },
-  );
-
-  throwOnUserErrors('Shopify order edit commit failed', commitData.orderEditCommit.userErrors);
-  console.log('Shopify prepayment discount applied through order edit:', {
-    orderId,
-    amount: PREPAYMENT_AMOUNT,
-  });
 }
 
 export async function updateShopifyOrderAfterPayment(
@@ -655,47 +527,38 @@ export async function updateShopifyOrderAfterPayment(
   invoiceId: string,
   paymentType: PaymentType,
 ): Promise<ShopifyRestOrder | undefined> {
-  const isPrepayment = paymentType === 'prepayment';
   const currentOrder = await getShopifyOrder(String(orderId)).catch((error) => {
     console.error('Failed to load current Shopify order before payment update:', error);
     return undefined;
   });
 
-  if (!isPrepayment) {
-    try {
-      const transaction = await shopifyRequest<{ transaction?: { id?: number; status?: string; kind?: string } }>(
-        `/orders/${orderId}/transactions.json`,
-        {
-          method: 'POST',
-          body: JSON.stringify({
-            transaction: {
-              kind: 'sale',
-              status: 'success',
-              amount: Number(amount).toFixed(2),
-              currency: 'UAH',
-              gateway: paymentType === 'installments' ? 'monobank_parts' : 'monobank',
-              source: 'external',
-              authorization: asString(invoiceId),
-            },
-          }),
-        },
-      );
-      console.log('Shopify external payment transaction created:', {
-        orderId,
-        transactionId: transaction.transaction?.id,
-        status: transaction.transaction?.status,
-        kind: transaction.transaction?.kind,
-        amount,
-      });
-    } catch (error) {
-      console.error('Failed to create Shopify external payment transaction, trying order status update:', error);
-    }
-  } else {
-    console.log('Prepayment received: Shopify financial status will stay unchanged.');
-  }
-
-  if (isPrepayment) {
-    await applyPaidPrepaymentDiscount(orderId, amount);
+  try {
+    const transaction = await shopifyRequest<{ transaction?: { id?: number; status?: string; kind?: string } }>(
+      `/orders/${orderId}/transactions.json`,
+      {
+        method: 'POST',
+        body: JSON.stringify({
+          transaction: {
+            kind: 'sale',
+            status: 'success',
+            amount: Number(amount).toFixed(2),
+            currency: 'UAH',
+            gateway: paymentType === 'installments' ? 'monobank_parts' : 'monobank',
+            source: 'external',
+            authorization: asString(invoiceId),
+          },
+        }),
+      },
+    );
+    console.log('Shopify external payment transaction created:', {
+      orderId,
+      transactionId: transaction.transaction?.id,
+      status: transaction.transaction?.status,
+      kind: transaction.transaction?.kind,
+      amount,
+    });
+  } catch (error) {
+    console.error('Failed to create Shopify external payment transaction, trying order status update:', error);
   }
 
   const data = await shopifyRequest<{ order?: ShopifyRestOrder }>(`/orders/${orderId}.json`, {
@@ -713,7 +576,7 @@ export async function updateShopifyOrderAfterPayment(
 
   console.log('Shopify order updated after payment:', {
     orderId,
-    expectedFinancialStatus: isPrepayment ? 'unchanged' : 'paid',
+    expectedFinancialStatus: paymentType === 'prepayment' ? 'partially_paid' : 'paid',
     financialStatus: data.order?.financial_status,
     amount,
     invoiceId,

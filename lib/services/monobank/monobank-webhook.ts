@@ -150,8 +150,6 @@ export async function processMonobankWebhook(body: MonobankWebhookBody): Promise
       updatedPayment = await markPaymentSuccess(storedPayment.id, body);
     }
 
-    await syncSitniksAfterMonobankSuccess(updatedPayment, body);
-
     if (env.shopifyPaymentUpdateDelaySeconds > 0) {
       const delayMs = env.shopifyPaymentUpdateDelaySeconds * 1000;
       console.log('Delaying Shopify payment update:', {
@@ -167,6 +165,8 @@ export async function processMonobankWebhook(body: MonobankWebhookBody): Promise
     } else {
       await syncShopifyAfterMonobankSuccess(payment, body);
     }
+
+    await syncSitniksAfterMonobankSuccess(updatedPayment, body);
 
     await sendServerSidePurchaseEvents(payment, body);
 

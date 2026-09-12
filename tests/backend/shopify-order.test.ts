@@ -73,6 +73,10 @@ describe('Shopify order mapping', () => {
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'payment_status', value: 'unpaid' },
+      { name: 'Сума', value: '1200' },
+      { name: 'Сплата', value: '0' },
+      { name: 'Paid amount', value: '0' },
       { name: 'delivery_type', value: 'nova_poshta' },
       { name: 'nova_poshta_delivery_method', value: 'branch' },
       { name: 'nova_poshta_city', value: 'Київ' },
@@ -217,17 +221,26 @@ describe('Shopify order mapping', () => {
     ]));
   });
 
-  test('prepayment after payment keeps financial status unchanged and sets paid tag', () => {
+  test('prepayment after payment marks Shopify as partially paid and stores paid amount', () => {
     const update = buildOrderUpdateAfterPayment(123, 300, 'invoice-1', 'prepayment', [
       { name: 'payment_type', value: 'prepayment_300' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'Сума', value: '1200' },
+      { name: 'Сплата', value: '0' },
     ]);
-    expect(update.financial_status).toBeUndefined();
+    expect(update.financial_status).toBe('partially_paid');
     expect(update.tags).toBe('prepayment_300_paid');
     expect(update.discount_codes).toBeUndefined();
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'prepayment_300' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'Сума', value: '1200' },
+      { name: 'Сплата', value: '300' },
+      { name: 'payment_status', value: 'partially_paid' },
+      { name: 'Payment', value: 'Передплата Monobank' },
+      { name: 'Paid amount', value: '300' },
+      { name: 'monobank_paid_amount', value: '300' },
+      { name: 'monobank_invoice_id', value: 'invoice-1' },
     ]);
   });
 
@@ -241,6 +254,13 @@ describe('Shopify order mapping', () => {
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'payment_status', value: 'paid' },
+      { name: 'Payment', value: 'Monobank' },
+      { name: 'Сплата', value: '1200' },
+      { name: 'Paid amount', value: '1200' },
+      { name: 'monobank_paid_amount', value: '1200' },
+      { name: 'monobank_invoice_id', value: 'invoice-1' },
+      { name: 'Сума', value: '1200' },
     ]);
   });
 
@@ -271,6 +291,13 @@ describe('Shopify order mapping', () => {
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'payment_status', value: 'paid' },
+      { name: 'Payment', value: 'Покупка частинами Monobank' },
+      { name: 'Сплата', value: '1200' },
+      { name: 'Paid amount', value: '1200' },
+      { name: 'monobank_paid_amount', value: '1200' },
+      { name: 'monobank_invoice_id', value: 'parts-order-1' },
+      { name: 'Сума', value: '1200' },
     ]);
   });
 
