@@ -100,6 +100,90 @@ function normalizePaymentTypeForShopify(paymentType: PaymentType | CheckoutPaylo
   return 'full_payment';
 }
 
+function customerFullName(body: CheckoutPayload): string {
+  const customer = body.customer || {};
+  return [asString(customer.first_name), asString(customer.last_name)].filter(Boolean).join(' ').trim();
+}
+
+function legacyPaymentLabel(body: CheckoutPayload): string {
+  if (body.payment_type === 'prepayment') return 'Накладений платіж';
+  if (body.payment_type === 'installments') return 'Покупка частинами Monobank';
+  return 'Повна оплата Monobank';
+}
+
+function legacyDeliveryMethodLabel(deliveryMethod: string): string {
+  if (deliveryMethod === 'address') return 'Адресна доставка';
+  return 'Відділення / Поштомат';
+}
+
+function buildLegacyUtmValue(body: CheckoutPayload): string {
+  const tracking = body.tracking || body.utm || {};
+  const keys = [
+    'utm_medium',
+    'utm_source',
+    'utm_campaign',
+    'utm_content',
+    'utm_term',
+    'fbclid',
+    'gclid',
+    'fbc',
+    'fbp',
+  ];
+
+  return keys
+    .map((key) => {
+      const value = asString(tracking[key]);
+      return value ? `${key}: ${value}` : '';
+    })
+    .filter(Boolean)
+    .join('; ');
+}
+
+function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmount: number) {
+  const customer = body.customer || {};
+  const shipping = body.shipping || {};
+  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  const deliveryMethod = asString(shipping.delivery_method) || 'branch';
+  const city = isInternational
+    ? asString(shipping.intl_city) || asString(shipping.city)
+    : asString(shipping.city);
+  const warehouse = isInternational ? asString(shipping.warehouse) : asString(shipping.warehouse);
+  const cityRef = asString(shipping.city_ref);
+  const warehouseRef = asString(shipping.warehouse_ref);
+  const cashOnDelivery = body.payment_type === 'prepayment';
+  const utm = buildLegacyUtmValue(body);
+
+  return [
+    { name: 'Recipient Name', value: customerFullName(body) },
+    { name: 'Recipient Phone', value: asString(customer.phone) },
+    { name: 'Recipient Email', value: asString(customer.email) },
+    { name: 'Delivery Method', value: isInternational ? 'International delivery' : 'Нова пошта' },
+    { name: 'City', value: city },
+    { name: 'Post Office', value: warehouse },
+    { name: '_zip-code', value: asString(shipping.postcode) },
+    { name: 'Payment', value: legacyPaymentLabel(body) },
+    { name: 'Comment', value: asString(body.comment) },
+    { name: 'Shipping', value: isInternational ? 'International delivery' : 'За тарифами перевізника' },
+    { name: '_provider', value: isInternational ? 'International delivery' : 'Нова пошта' },
+    { name: '_country', value: isInternational ? asString(shipping.country) : 'Ukraine' },
+    { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
+    { name: '_delivery_method', value: isInternational ? 'International delivery' : legacyDeliveryMethodLabel(deliveryMethod) },
+    { name: '_delivery_city', value: city },
+    { name: '_delivery_city_Ref', value: cityRef },
+    { name: '_delivery_warehouse', value: warehouse },
+    { name: '_delivery_warehouse_CityRef', value: cityRef },
+    { name: '_delivery_warehouse_Ref', value: warehouseRef },
+    { name: 'UTM', value: utm },
+    { name: 'Currency rate', value: '1' },
+    { name: 'Cash on delivery', value: cashOnDelivery ? 'true' : 'false' },
+    {
+      name: 'Partial payment value - Monobank',
+      value: body.payment_type === 'prepayment' ? `${paymentAmount || PREPAYMENT_AMOUNT} UAH` : '',
+    },
+    { name: 'Checkout id', value: asString(body.cart_token) },
+  ].filter((attribute) => attribute.value);
+}
+
 export function getShippingPrice(body: CheckoutPayload): number {
   void body;
   return 0;
@@ -251,6 +335,7 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
       { name: 'payment_type', value: paymentType },
       { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
       ...buildShippingNoteAttributes(body),
+      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount),
     ].filter((attribute) => attribute.value),
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),

@@ -70,7 +70,7 @@ describe('Shopify order mapping', () => {
   test('order additional details include payment and delivery fields for integrations', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
-    expect(payload.order.note_attributes).toEqual([
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
       { name: 'delivery_type', value: 'nova_poshta' },
@@ -79,7 +79,27 @@ describe('Shopify order mapping', () => {
       { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
       { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
       { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
-    ]);
+      { name: 'Recipient Name', value: 'Анастасія Зінчук' },
+      { name: 'Recipient Phone', value: '0682345729' },
+      { name: 'Recipient Email', value: 'test@example.com' },
+      { name: 'Delivery Method', value: 'Нова пошта' },
+      { name: 'City', value: 'Київ' },
+      { name: 'Post Office', value: 'Відділення №12' },
+      { name: 'Payment', value: 'Повна оплата Monobank' },
+      { name: 'Shipping', value: 'За тарифами перевізника' },
+      { name: '_provider', value: 'Нова пошта' },
+      { name: '_country', value: 'Ukraine' },
+      { name: '_delivery_type', value: 'branch' },
+      { name: '_delivery_method', value: 'Відділення / Поштомат' },
+      { name: '_delivery_city', value: 'Київ' },
+      { name: '_delivery_city_Ref', value: 'city-ref-kyiv' },
+      { name: '_delivery_warehouse', value: 'Відділення №12' },
+      { name: '_delivery_warehouse_CityRef', value: 'city-ref-kyiv' },
+      { name: '_delivery_warehouse_Ref', value: 'warehouse-ref-12' },
+      { name: 'Currency rate', value: '1' },
+      { name: 'Cash on delivery', value: 'false' },
+      { name: 'Checkout id', value: 'cart-token' },
+    ]));
   });
 
   test('custom checkout orders do not add Shopify taxes', () => {
@@ -133,7 +153,8 @@ describe('Shopify order mapping', () => {
   });
 
   test('prepayment order starts pending with not_paid_300 tag and no discount before payment', () => {
-    const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'prepayment' }, 200);
+    const prepaymentPayload = { ...basePayload, payment_type: 'prepayment' as const };
+    const payload = buildShopifyOrderPayload(prepaymentPayload, getPaymentAmount(prepaymentPayload));
     const lineItems = payload.order.line_items as Array<Record<string, unknown>>;
 
     expect(payload.order.financial_status).toBe('pending');
@@ -141,6 +162,12 @@ describe('Shopify order mapping', () => {
     expect(payload.order.discount_codes).toBeUndefined();
     expect(lineItems[0].taxable).toBe(false);
     expect(lineItems[0].tax_lines).toEqual([]);
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'payment_type', value: 'prepayment_300' },
+      { name: 'Payment', value: 'Накладений платіж' },
+      { name: 'Cash on delivery', value: 'true' },
+      { name: 'Partial payment value - Monobank', value: '300 UAH' },
+    ]));
   });
 
   test('prepayment after payment keeps financial status unchanged and sets paid tag', () => {
@@ -173,7 +200,7 @@ describe('Shopify order mapping', () => {
   test('installments order is marked separately and becomes paid after approval', () => {
     const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'installments' }, 1200);
     expect(payload.order.financial_status).toBe('pending');
-    expect(payload.order.note_attributes).toEqual([
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
       { name: 'delivery_type', value: 'nova_poshta' },
@@ -182,7 +209,11 @@ describe('Shopify order mapping', () => {
       { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
       { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
       { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
-    ]);
+      { name: 'Payment', value: 'Покупка частинами Monobank' },
+      { name: '_delivery_city_Ref', value: 'city-ref-kyiv' },
+      { name: '_delivery_warehouse_Ref', value: 'warehouse-ref-12' },
+      { name: 'Cash on delivery', value: 'false' },
+    ]));
 
     const update = buildOrderUpdateAfterPayment(123, 1200, 'parts-order-1', 'installments', [
       { name: 'payment_type', value: 'monobank_parts' },
