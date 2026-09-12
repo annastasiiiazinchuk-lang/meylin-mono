@@ -68,6 +68,8 @@ services:
         sync: false
       - key: SITNIKS_SETTLEMENT_ACCOUNT_ID
         sync: false
+      - key: SITNIKS_SETTLEMENT_ACCOUNT_TITLE
+        sync: false
       - key: SITNIKS_WAREHOUSE_ID
         sync: false
       - key: SITNIKS_NOVA_POSHTA_INTEGRATION_ID

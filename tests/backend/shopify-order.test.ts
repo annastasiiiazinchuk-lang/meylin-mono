@@ -70,6 +70,7 @@ describe('Shopify order mapping', () => {
   test('order additional details include payment and delivery fields for integrations', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
+    expect(payload.order.tags).toBe('full_payment_unpaid');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -89,10 +90,13 @@ describe('Shopify order mapping', () => {
       { name: 'Delivery Method', value: 'Нова пошта' },
       { name: 'City', value: 'Київ' },
       { name: 'Post Office', value: 'Відділення №12' },
-      { name: 'Payment', value: 'Повна оплата Monobank' },
+      { name: 'Payment', value: 'Monobank' },
       { name: 'Shipping', value: 'За тарифами перевізника' },
       { name: '_provider', value: 'Нова пошта' },
       { name: '_country', value: 'Ukraine' },
+      { name: 'Payment tag', value: 'full_payment_unpaid' },
+      { name: 'payment_tag', value: 'full_payment_unpaid' },
+      { name: 'Payment status tag', value: 'full_payment_unpaid' },
       { name: '_delivery_type', value: 'branch' },
       { name: '_delivery_method', value: 'Відділення / Поштомат' },
       { name: '_delivery_city', value: 'Київ' },
@@ -209,13 +213,15 @@ describe('Shopify order mapping', () => {
     const lineItems = payload.order.line_items as Array<Record<string, unknown>>;
 
     expect(payload.order.financial_status).toBe('pending');
-    expect(payload.order.tags).toBe('not_paid_300');
+    expect(payload.order.tags).toBe('not_paid_300, prepayment_300_unpaid');
     expect(payload.order.discount_codes).toBeUndefined();
     expect(lineItems[0].taxable).toBe(false);
     expect(lineItems[0].tax_lines).toEqual([]);
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'prepayment_300' },
       { name: 'Payment', value: 'Накладений платіж' },
+      { name: 'Payment tag', value: 'prepayment_300_unpaid' },
+      { name: 'payment_tag', value: 'prepayment_300_unpaid' },
       { name: 'Cash on delivery', value: 'true' },
       { name: 'Partial payment value - Monobank', value: '300 UAH' },
     ]));
@@ -227,9 +233,9 @@ describe('Shopify order mapping', () => {
       { name: 'shipping_type', value: 'ukraine' },
       { name: 'Сума', value: '1200' },
       { name: 'Сплата', value: '0' },
-    ]);
+    ], 'manual, not_paid_300, prepayment_300_unpaid');
     expect(update.financial_status).toBe('partially_paid');
-    expect(update.tags).toBe('prepayment_300_paid');
+    expect(update.tags).toBe('manual, prepayment_300_paid');
     expect(update.discount_codes).toBeUndefined();
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'prepayment_300' },
@@ -237,6 +243,9 @@ describe('Shopify order mapping', () => {
       { name: 'Сума', value: '1200' },
       { name: 'Сплата', value: '300' },
       { name: 'payment_status', value: 'partially_paid' },
+      { name: 'payment_tag', value: 'prepayment_300_paid' },
+      { name: 'Payment tag', value: 'prepayment_300_paid' },
+      { name: 'Payment status tag', value: 'prepayment_300_paid' },
       { name: 'Payment', value: 'Передплата Monobank' },
       { name: 'Paid amount', value: '300' },
       { name: 'monobank_paid_amount', value: '300' },
@@ -248,13 +257,16 @@ describe('Shopify order mapping', () => {
     const update = buildOrderUpdateAfterPayment(123, 1200, 'invoice-1', 'full', [
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
-    ]);
+    ], 'manual, full_payment_unpaid');
     expect(update.financial_status).toBe('paid');
-    expect(update.tags).toBeUndefined();
+    expect(update.tags).toBe('manual, full_payment_paid');
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
       { name: 'payment_status', value: 'paid' },
+      { name: 'payment_tag', value: 'full_payment_paid' },
+      { name: 'Payment tag', value: 'full_payment_paid' },
+      { name: 'Payment status tag', value: 'full_payment_paid' },
       { name: 'Payment', value: 'Monobank' },
       { name: 'Сплата', value: '1200' },
       { name: 'Paid amount', value: '1200' },
@@ -267,6 +279,7 @@ describe('Shopify order mapping', () => {
   test('installments order is marked separately and becomes paid after approval', () => {
     const payload = buildShopifyOrderPayload({ ...basePayload, payment_type: 'installments' }, 1200);
     expect(payload.order.financial_status).toBe('pending');
+    expect(payload.order.tags).toBe('monobank_parts_unpaid');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -287,11 +300,14 @@ describe('Shopify order mapping', () => {
       { name: 'shipping_type', value: 'ukraine' },
     ]);
     expect(update.financial_status).toBe('paid');
-    expect(update.tags).toBeUndefined();
+    expect(update.tags).toBe('monobank_parts_paid');
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
       { name: 'payment_status', value: 'paid' },
+      { name: 'payment_tag', value: 'monobank_parts_paid' },
+      { name: 'Payment tag', value: 'monobank_parts_paid' },
+      { name: 'Payment status tag', value: 'monobank_parts_paid' },
       { name: 'Payment', value: 'Покупка частинами Monobank' },
       { name: 'Сплата', value: '1200' },
       { name: 'Paid amount', value: '1200' },

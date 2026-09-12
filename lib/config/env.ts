@@ -54,6 +54,7 @@ export const env = {
   ),
   sitniksSalesChannelId: Number(process.env.SITNIKS_SALES_CHANNEL_ID || 0),
   sitniksSettlementAccountId: Number(process.env.SITNIKS_SETTLEMENT_ACCOUNT_ID || 0),
+  sitniksSettlementAccountTitle: process.env.SITNIKS_SETTLEMENT_ACCOUNT_TITLE || '',
   sitniksWarehouseId: Number(process.env.SITNIKS_WAREHOUSE_ID || 0),
   sitniksNovaPoshtaIntegrationId: Number(process.env.SITNIKS_NOVA_POSHTA_INTEGRATION_ID || 0),
   sitniksCashRegisterId: Number(process.env.SITNIKS_CASH_REGISTER_ID || 0),

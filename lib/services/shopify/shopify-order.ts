@@ -14,9 +14,20 @@ interface ShopifyRestOrder {
   id: number;
   name: string;
   financial_status?: string;
+  note_attributes?: Array<{ name?: string; value?: string }>;
+  tags?: string;
 }
 
 const INTERNATIONAL_DELIVERY_LABEL = 'Міжнародна доставка';
+const PAYMENT_STATUS_TAGS = new Set([
+  'full_payment_unpaid',
+  'full_payment_paid',
+  'prepayment_300_unpaid',
+  'prepayment_300_paid',
+  'monobank_parts_unpaid',
+  'monobank_parts_paid',
+  'not_paid_300',
+]);
 
 const COUNTRY_CODE_BY_NAME: Record<string, string> = {
   austria: 'AT',
@@ -116,6 +127,43 @@ function normalizePaymentTypeForShopify(paymentType: PaymentType | CheckoutPaylo
   return 'full_payment';
 }
 
+function getUnpaidPaymentTag(paymentType: PaymentType | CheckoutPayload['payment_type']): string {
+  if (paymentType === 'prepayment') return 'prepayment_300_unpaid';
+  if (paymentType === 'installments') return 'monobank_parts_unpaid';
+  return 'full_payment_unpaid';
+}
+
+function getPaidPaymentTag(paymentType: PaymentType | CheckoutPayload['payment_type']): string {
+  if (paymentType === 'prepayment') return 'prepayment_300_paid';
+  if (paymentType === 'installments') return 'monobank_parts_paid';
+  return 'full_payment_paid';
+}
+
+function getInitialPaymentTags(paymentType: PaymentType | CheckoutPayload['payment_type']): string {
+  const unpaidPaymentTag = getUnpaidPaymentTag(paymentType);
+  return paymentType === 'prepayment'
+    ? `not_paid_300, ${unpaidPaymentTag}`
+    : unpaidPaymentTag;
+}
+
+function normalizeShopifyTags(tags: unknown): string[] {
+  if (Array.isArray(tags)) {
+    return tags.map(asString).map((tag) => tag.trim()).filter(Boolean);
+  }
+
+  return asString(tags)
+    .split(',')
+    .map((tag) => tag.trim())
+    .filter(Boolean);
+}
+
+function withPaymentStatusTag(existingTags: unknown, paymentStatusTag: string): string {
+  const tags = normalizeShopifyTags(existingTags)
+    .filter((tag) => !PAYMENT_STATUS_TAGS.has(tag));
+
+  return Array.from(new Set([...tags, paymentStatusTag])).join(', ');
+}
+
 function customerFullName(body: CheckoutPayload): string {
   const customer = body.customer || {};
   return [asString(customer.first_name), asString(customer.last_name)].filter(Boolean).join(' ').trim();
@@ -130,7 +178,7 @@ function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): str
   if (isInternational) return 'Monobank';
   if (body.payment_type === 'prepayment') return 'Накладений платіж';
   if (body.payment_type === 'installments') return 'Покупка частинами Monobank';
-  return 'Повна оплата Monobank';
+  return 'Monobank';
 }
 
 function legacyDeliveryMethodLabel(deliveryMethod: string): string {
@@ -205,6 +253,7 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
   const customer = body.customer || {};
   const shipping = body.shipping || {};
   const isInternational = isInternationalCheckout(body);
+  const unpaidPaymentTag = getUnpaidPaymentTag(body.payment_type);
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
   const country = isInternational ? asString(shipping.country) : 'Ukraine';
   const city = isInternational
@@ -252,6 +301,13 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
     { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: '_country', value: country },
+    { name: 'Payment tag', value: unpaidPaymentTag },
+    { name: 'payment_tag', value: unpaidPaymentTag },
+    { name: 'Payment status tag', value: unpaidPaymentTag },
+    { name: 'payment_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
+    { name: 'settlement_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
+    { name: 'Payment account', value: env.sitniksSettlementAccountTitle },
+    { name: 'Settlement Account', value: env.sitniksSettlementAccountTitle },
     { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
     { name: '_delivery_method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : legacyDeliveryMethodLabel(deliveryMethod) },
     { name: '_delivery_city', value: city },
@@ -448,7 +504,7 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     ];
   }
 
-  if (paymentType === 'prepayment_300') order.tags = 'not_paid_300';
+  order.tags = getInitialPaymentTags(body.payment_type);
 
   return { order, paymentType, prepaymentDiscount: 0, cartTotal };
 }
@@ -477,11 +533,13 @@ export function buildOrderUpdateAfterPayment(
   invoiceId: string,
   paymentType: PaymentType,
   existingNoteAttributes: Array<{ name?: string; value?: string }> = [],
+  existingTags: unknown = '',
 ) {
   const isPrepayment = paymentType === 'prepayment';
   const normalizedPaymentType = normalizePaymentTypeForShopify(paymentType);
   const paidAmount = formatPaymentAttributeAmount(amount);
   const paymentStatus = isPrepayment ? 'partially_paid' : 'paid';
+  const paidPaymentTag = getPaidPaymentTag(paymentType);
   const paymentLabel = isPrepayment
     ? 'Передплата Monobank'
     : paymentType === 'installments'
@@ -497,10 +555,21 @@ export function buildOrderUpdateAfterPayment(
 
   noteAttributeByName.set('payment_type', normalizedPaymentType);
   noteAttributeByName.set('payment_status', paymentStatus);
+  noteAttributeByName.set('payment_tag', paidPaymentTag);
+  noteAttributeByName.set('Payment tag', paidPaymentTag);
+  noteAttributeByName.set('Payment status tag', paidPaymentTag);
   noteAttributeByName.set('Payment', paymentLabel);
   noteAttributeByName.set('Сплата', paidAmount);
   noteAttributeByName.set('Paid amount', paidAmount);
   noteAttributeByName.set('monobank_paid_amount', paidAmount);
+  if (env.sitniksSettlementAccountId > 0) {
+    noteAttributeByName.set('payment_account_id', String(env.sitniksSettlementAccountId));
+    noteAttributeByName.set('settlement_account_id', String(env.sitniksSettlementAccountId));
+  }
+  if (env.sitniksSettlementAccountTitle) {
+    noteAttributeByName.set('Payment account', env.sitniksSettlementAccountTitle);
+    noteAttributeByName.set('Settlement Account', env.sitniksSettlementAccountTitle);
+  }
   if (invoiceId) noteAttributeByName.set('monobank_invoice_id', invoiceId);
   if (!noteAttributeByName.has('Сума') && !isPrepayment) {
     noteAttributeByName.set('Сума', paidAmount);
@@ -508,11 +577,11 @@ export function buildOrderUpdateAfterPayment(
 
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
+    tags: withPaymentStatusTag(existingTags, paidPaymentTag),
     note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
   };
 
   if (isPrepayment) {
-    orderUpdate.tags = 'prepayment_300_paid';
     orderUpdate.financial_status = 'partially_paid';
   } else {
     orderUpdate.financial_status = 'paid';
@@ -570,6 +639,7 @@ export async function updateShopifyOrderAfterPayment(
         invoiceId,
         paymentType,
         currentOrder?.note_attributes as Array<{ name?: string; value?: string }> | undefined,
+        currentOrder?.tags,
       ),
     }),
   });
