@@ -30,6 +30,7 @@ export const checkoutPayloadSchema = z.object({
     house: z.string().optional(),
     apartment: z.string().optional(),
     country: z.string().optional(),
+    country_code: z.string().optional(),
     intl_city: z.string().optional(),
     address: z.string().optional(),
     postcode: z.string().optional(),

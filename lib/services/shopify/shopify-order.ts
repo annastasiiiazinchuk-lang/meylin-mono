@@ -26,6 +26,63 @@ type ShopifyGraphqlResponse<T> = {
   errors?: { message: string }[];
 };
 
+const INTERNATIONAL_DELIVERY_LABEL = 'Міжнародна доставка';
+
+const COUNTRY_CODE_BY_NAME: Record<string, string> = {
+  austria: 'AT',
+  австрія: 'AT',
+  австрия: 'AT',
+  belgium: 'BE',
+  бельгія: 'BE',
+  бельгия: 'BE',
+  canada: 'CA',
+  канада: 'CA',
+  czechia: 'CZ',
+  czech: 'CZ',
+  'czech republic': 'CZ',
+  чехія: 'CZ',
+  чехия: 'CZ',
+  france: 'FR',
+  франція: 'FR',
+  франция: 'FR',
+  germany: 'DE',
+  німеччина: 'DE',
+  германия: 'DE',
+  italy: 'IT',
+  італія: 'IT',
+  италия: 'IT',
+  moldova: 'MD',
+  молдова: 'MD',
+  netherlands: 'NL',
+  нідерланди: 'NL',
+  нидерланды: 'NL',
+  poland: 'PL',
+  польща: 'PL',
+  польша: 'PL',
+  portugal: 'PT',
+  португалія: 'PT',
+  португалия: 'PT',
+  romania: 'RO',
+  румунія: 'RO',
+  румыния: 'RO',
+  slovakia: 'SK',
+  словаччина: 'SK',
+  словакия: 'SK',
+  spain: 'ES',
+  іспанія: 'ES',
+  испания: 'ES',
+  uk: 'GB',
+  'united kingdom': 'GB',
+  'great britain': 'GB',
+  'велика британія': 'GB',
+  великобританія: 'GB',
+  великобритания: 'GB',
+  usa: 'US',
+  us: 'US',
+  'united states': 'US',
+  сша: 'US',
+};
+
 function requireShopifyStoreDomain(): string {
   if (!env.shopifyStoreDomain) throw new Error('Missing SHOPIFY_STORE_DOMAIN');
   return env.shopifyStoreDomain;
@@ -105,7 +162,8 @@ function customerFullName(body: CheckoutPayload): string {
   return [asString(customer.first_name), asString(customer.last_name)].filter(Boolean).join(' ').trim();
 }
 
-function legacyPaymentLabel(body: CheckoutPayload): string {
+function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): string {
+  if (isInternational) return 'Monobank';
   if (body.payment_type === 'prepayment') return 'Накладений платіж';
   if (body.payment_type === 'installments') return 'Покупка частинами Monobank';
   return 'Повна оплата Monobank';
@@ -139,6 +197,12 @@ function buildLegacyUtmValue(body: CheckoutPayload): string {
     .join('; ');
 }
 
+function getCountryCode(countryOrCode: string): string {
+  const normalized = countryOrCode.trim();
+  if (/^[a-z]{2}$/i.test(normalized)) return normalized.toUpperCase();
+  return COUNTRY_CODE_BY_NAME[normalized.toLowerCase()] || '';
+}
+
 function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmount: number) {
   const customer = body.customer || {};
   const shipping = body.shipping || {};
@@ -152,17 +216,21 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
   const address = asString(shipping.address);
   const apartment = asString(shipping.apartment);
   const postcode = asString(shipping.postcode);
+  const countryCode = isInternational ? getCountryCode(asString(shipping.country_code) || country) : '';
   const cityRef = asString(shipping.city_ref);
   const warehouseRef = asString(shipping.warehouse_ref);
   const cashOnDelivery = body.payment_type === 'prepayment';
   const utm = buildLegacyUtmValue(body);
   const internationalFields = isInternational
     ? [
+        { name: '_country-code', value: countryCode },
         { name: 'Country', value: country },
         { name: 'Address', value: address },
         { name: 'Apartment', value: apartment },
+        { name: 'Zip code', value: postcode },
         { name: 'Postcode', value: postcode },
         { name: '_delivery_country', value: country },
+        { name: '_delivery_country_code', value: countryCode },
         { name: '_delivery_address', value: address },
         { name: '_delivery_apartment', value: apartment },
         { name: '_delivery_postcode', value: postcode },
@@ -177,17 +245,17 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: 'Recipient Name', value: customerFullName(body) },
     { name: 'Recipient Phone', value: asString(customer.phone) },
     { name: 'Recipient Email', value: asString(customer.email) },
-    { name: 'Delivery Method', value: isInternational ? 'International delivery' : 'Нова пошта' },
+    { name: 'Delivery Method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: 'City', value: city },
     { name: 'Post Office', value: warehouse },
     { name: '_zip-code', value: postcode },
-    { name: 'Payment', value: legacyPaymentLabel(body) },
+    { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
     { name: 'Comment', value: asString(body.comment) },
-    { name: 'Shipping', value: isInternational ? 'International delivery' : 'За тарифами перевізника' },
-    { name: '_provider', value: isInternational ? 'International delivery' : 'Нова пошта' },
+    { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
+    { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: '_country', value: country },
     { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
-    { name: '_delivery_method', value: isInternational ? 'International delivery' : legacyDeliveryMethodLabel(deliveryMethod) },
+    { name: '_delivery_method', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : legacyDeliveryMethodLabel(deliveryMethod) },
     { name: '_delivery_city', value: city },
     { name: '_delivery_city_Ref', value: cityRef },
     { name: '_delivery_warehouse', value: warehouse },
