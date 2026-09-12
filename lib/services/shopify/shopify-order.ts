@@ -162,6 +162,11 @@ function customerFullName(body: CheckoutPayload): string {
   return [asString(customer.first_name), asString(customer.last_name)].filter(Boolean).join(' ').trim();
 }
 
+export function isInternationalCheckout(body: CheckoutPayload): boolean {
+  const shipping = body.shipping || {};
+  return body.shipping_type === 'international' || shipping.type === 'international';
+}
+
 function legacyPaymentLabel(body: CheckoutPayload, isInternational = false): string {
   if (isInternational) return 'Monobank';
   if (body.payment_type === 'prepayment') return 'Накладений платіж';
@@ -203,16 +208,45 @@ function getCountryCode(countryOrCode: string): string {
   return COUNTRY_CODE_BY_NAME[normalized.toLowerCase()] || '';
 }
 
+export function buildInternationalCheckoutComment(body: CheckoutPayload): string {
+  const customer = body.customer || {};
+  const shipping = body.shipping || {};
+  const country = asString(shipping.country);
+  const city = asString(shipping.intl_city) || asString(shipping.city);
+  const address = asString(shipping.address);
+  const apartment = asString(shipping.apartment);
+  const postcode = asString(shipping.postcode);
+  const countryCode = getCountryCode(asString(shipping.country_code) || country);
+  const customerComment = asString(body.comment);
+
+  return [
+    'Тип доставки: закордон',
+    'Доставка: за кордон',
+    `Delivery Method: ${INTERNATIONAL_DELIVERY_LABEL}`,
+    `Recipient Name: ${customerFullName(body)}`,
+    `Recipient Phone: ${asString(customer.phone)}`,
+    `Recipient Email: ${asString(customer.email)}`,
+    countryCode ? `_country-code: ${countryCode}` : '',
+    `Country: ${country}`,
+    `City: ${city}`,
+    `Address: ${address}`,
+    `Apartment: ${apartment}`,
+    `Zip code: ${postcode}`,
+    `Payment: ${legacyPaymentLabel(body, true)}`,
+    customerComment ? `Comment: ${customerComment}` : '',
+  ].filter((line) => line && !line.endsWith(': ')).join('\n');
+}
+
 function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmount: number) {
   const customer = body.customer || {};
   const shipping = body.shipping || {};
-  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  const isInternational = isInternationalCheckout(body);
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
   const country = isInternational ? asString(shipping.country) : 'Ukraine';
   const city = isInternational
     ? asString(shipping.intl_city) || asString(shipping.city)
     : asString(shipping.city);
-  const warehouse = isInternational ? asString(shipping.warehouse) : asString(shipping.warehouse);
+  const warehouse = asString(shipping.warehouse);
   const address = asString(shipping.address);
   const apartment = asString(shipping.apartment);
   const postcode = asString(shipping.postcode);
@@ -286,7 +320,7 @@ export function getOrderIdFromMonobankReference(reference: unknown): number {
 export function buildShippingAddress(body: CheckoutPayload) {
   const customer = body.customer || {};
   const shipping = body.shipping || {};
-  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  const isInternational = isInternationalCheckout(body);
   const deliveryMethod = asString(shipping.delivery_method);
   const pickupType = deliveryMethod === 'postomat' ? 'Поштомат' : 'Відділення';
   const domesticAddress = deliveryMethod === 'address'
@@ -371,7 +405,7 @@ export function buildTrackingNoteAttributes(body: CheckoutPayload) {
 
 export function buildShippingNoteAttributes(body: CheckoutPayload) {
   const shipping = body.shipping || {};
-  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  const isInternational = isInternationalCheckout(body);
   const deliveryMethod = asString(shipping.delivery_method);
   const shippingPrice = 0;
 
@@ -406,6 +440,9 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
   const shippingPrice = 0;
+  const orderNote = isInternationalCheckout(body)
+    ? buildInternationalCheckoutComment(body)
+    : asString(body.comment);
 
   if (lineItems.length === 0) throw new Error('Missing cart goods for Shopify order');
 
@@ -419,7 +456,7 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     send_receipt: false,
     send_fulfillment_receipt: false,
     inventory_behaviour: 'decrement_obeying_policy',
-    note: asString(body.comment),
+    note: orderNote,
     note_attributes: [
       { name: 'payment_type', value: paymentType },
       { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },

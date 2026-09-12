@@ -268,10 +268,15 @@ describe('Sitniks order mapping', () => {
       },
     }, { id: 124, name: '#1002' });
 
+    expect(String(payload.clientComment)).toContain('Тип доставки: закордон');
+    expect(String(payload.clientComment)).toContain('Recipient Email: test@example.com');
+    expect(String(payload.clientComment)).toContain('Country: Poland');
+    expect(String(payload.clientComment)).toContain('Zip code: 00-001');
+    expect(String(payload.clientComment)).toContain('Payment: Monobank');
     expect(String(payload.managerComment)).toContain('Повна оплата');
     expect(String(payload.managerComment)).toContain('Тип доставки: закордон');
     expect(String(payload.managerComment)).toContain('Доставка: за кордон');
-    expect(String(payload.managerComment)).toContain('Країна: Poland');
+    expect(String(payload.managerComment)).toContain('Country: Poland');
     expect(String(payload.managerComment)).not.toContain('Вартість доставки: 660 грн');
     expect(String(payload.managerComment)).not.toContain('Вартість доставки: 0 грн');
   });

@@ -85,21 +85,23 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
       cartTotal,
     });
 
-    try {
-      const sitniksOrder = await sendSitniksOrder(body, shopifyOrder);
-      if (sitniksOrder?.id) {
-        await markSitniksOrderSynced({
-          paymentId: savedPayment.id,
-          sitniksOrderId: sitniksOrder.id,
-          sitniksOrderNumber: sitniksOrder.orderNumber,
+    void (async () => {
+      try {
+        const sitniksOrder = await sendSitniksOrder(body, shopifyOrder);
+        if (sitniksOrder?.id) {
+          await markSitniksOrderSynced({
+            paymentId: savedPayment.id,
+            sitniksOrderId: sitniksOrder.id,
+            sitniksOrderNumber: sitniksOrder.orderNumber,
+          });
+        }
+      } catch (error) {
+        console.error('[Sitniks] Failed to send order:', error);
+        await markSitniksOrderSyncFailed(savedPayment.id, error).catch((syncError) => {
+          console.error('[Sitniks] Failed to save sync error:', syncError);
         });
       }
-    } catch (error) {
-      console.error('[Sitniks] Failed to send order:', error);
-      await markSitniksOrderSyncFailed(savedPayment.id, error).catch((syncError) => {
-        console.error('[Sitniks] Failed to save sync error:', syncError);
-      });
-    }
+    })();
 
     return json({
       ...invoice,

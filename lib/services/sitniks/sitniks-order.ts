@@ -4,7 +4,13 @@ import type { CheckoutPayload } from '../../types/checkout';
 import type { MonobankWebhookBody } from '../../types/monobank';
 import type { ShopifyOrder } from '../../types/shopify';
 import { asNumber, asString, parseJsonObject } from '../../utils/format';
-import { getCartTotal, getPaymentAmount, getShippingPrice } from '../shopify/shopify-order';
+import {
+  buildInternationalCheckoutComment,
+  getCartTotal,
+  getPaymentAmount,
+  getShippingPrice,
+  isInternationalCheckout,
+} from '../shopify/shopify-order';
 
 export interface SitniksOrderResponse {
   id?: number;
@@ -329,20 +335,10 @@ export function buildSitniksPayment(body: CheckoutPayload) {
 
 function buildDeliveryComment(body: CheckoutPayload): string {
   const shipping = body.shipping || {};
-  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
-  const shippingPrice = getShippingPrice(body);
+  const isInternational = isInternationalCheckout(body);
 
   if (isInternational) {
-    return [
-      'Тип доставки: закордон',
-      'Доставка: за кордон',
-      `Країна: ${asString(shipping.country)}`,
-      `Місто: ${asString(shipping.intl_city) || asString(shipping.city)}`,
-      `Адреса: ${asString(shipping.address)}`,
-      `Квартира/кімната: ${asString(shipping.apartment)}`,
-      `Індекс: ${asString(shipping.postcode)}`,
-      shippingPrice > 0 ? `Вартість доставки: ${shippingPrice} грн` : '',
-    ].filter((line) => !line.endsWith(': ') && !line.endsWith(':  грн')).join('\n');
+    return buildInternationalCheckoutComment(body);
   }
 
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
@@ -365,7 +361,7 @@ function buildDeliveryComment(body: CheckoutPayload): string {
 
 export function buildSitniksNpDelivery(body: CheckoutPayload) {
   const shipping = body.shipping || {};
-  const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
+  const isInternational = isInternationalCheckout(body);
   if (isInternational || env.sitniksNovaPoshtaIntegrationId <= 0) return null;
 
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
@@ -425,6 +421,9 @@ export function buildSitniksOrderPayload(
       : 'Повна оплата';
   const goodsComment = buildGoodsComment(body);
   const deliveryComment = buildDeliveryComment(body);
+  const clientComment = isInternationalCheckout(body)
+    ? buildInternationalCheckoutComment(body)
+    : asString(body.comment);
   const managerComment = [
     `Shopify order: ${shopifyOrder.name || shopifyOrder.id}`,
     `Варіант оплати: ${paymentType}`,
@@ -440,7 +439,7 @@ export function buildSitniksOrderPayload(
       phone: asString(customer.phone),
       email: asString(customer.email),
     },
-    clientComment: asString(body.comment),
+    clientComment,
     managerComment,
   };
 

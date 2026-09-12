@@ -152,6 +152,11 @@ describe('Shopify order mapping', () => {
       country: 'Poland',
       zip: '00-001',
     });
+    expect(String(payload.order.note)).toContain('Тип доставки: закордон');
+    expect(String(payload.order.note)).toContain('Recipient Email: test@example.com');
+    expect(String(payload.order.note)).toContain('Country: Poland');
+    expect(String(payload.order.note)).toContain('Zip code: 00-001');
+    expect(String(payload.order.note)).toContain('Payment: Monobank');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'shipping_type', value: 'international' },
       { name: 'delivery_type', value: 'international' },
