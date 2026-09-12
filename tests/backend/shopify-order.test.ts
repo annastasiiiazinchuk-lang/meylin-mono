@@ -25,7 +25,9 @@ const basePayload: CheckoutPayload = {
     type: 'ukraine',
     delivery_method: 'branch',
     city: 'Київ',
+    city_ref: 'city-ref-kyiv',
     warehouse: 'Відділення №12',
+    warehouse_ref: 'warehouse-ref-12',
   },
   goods: [
     {
@@ -74,7 +76,9 @@ describe('Shopify order mapping', () => {
       { name: 'delivery_type', value: 'nova_poshta' },
       { name: 'nova_poshta_delivery_method', value: 'branch' },
       { name: 'nova_poshta_city', value: 'Київ' },
+      { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
       { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
+      { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
     ]);
   });
 
@@ -175,7 +179,9 @@ describe('Shopify order mapping', () => {
       { name: 'delivery_type', value: 'nova_poshta' },
       { name: 'nova_poshta_delivery_method', value: 'branch' },
       { name: 'nova_poshta_city', value: 'Київ' },
+      { name: 'nova_poshta_city_ref', value: 'city-ref-kyiv' },
       { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
+      { name: 'nova_poshta_warehouse_ref', value: 'warehouse-ref-12' },
     ]);
 
     const update = buildOrderUpdateAfterPayment(123, 1200, 'parts-order-1', 'installments', [
