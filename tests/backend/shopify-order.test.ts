@@ -71,6 +71,12 @@ describe('Shopify order mapping', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
     expect(payload.order.tags).toBe('full_payment_unpaid');
+    expect(String(payload.order.note)).toContain('CRM оплата:');
+    expect(String(payload.order.note)).toContain('Payment: Monobank');
+    expect(String(payload.order.note)).toContain('Сума: 1200');
+    expect(String(payload.order.note)).toContain('Сплата: 0');
+    expect(String(payload.order.note)).toContain('Статус оплати: unpaid');
+    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_unpaid');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -165,6 +171,8 @@ describe('Shopify order mapping', () => {
     expect(String(payload.order.note)).toContain('Country: Poland');
     expect(String(payload.order.note)).toContain('Zip code: 00-001');
     expect(String(payload.order.note)).toContain('Payment: Monobank');
+    expect(String(payload.order.note)).toContain('CRM оплата:');
+    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_unpaid');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'shipping_type', value: 'international' },
       { name: 'delivery_type', value: 'international' },
@@ -236,6 +244,12 @@ describe('Shopify order mapping', () => {
     ], 'manual, not_paid_300, prepayment_300_unpaid');
     expect(update.financial_status).toBe('partially_paid');
     expect(update.tags).toBe('manual, prepayment_300_paid');
+    expect(String(update.note)).toContain('CRM оплата:');
+    expect(String(update.note)).toContain('Payment: Передплата Monobank');
+    expect(String(update.note)).toContain('Сума: 1200');
+    expect(String(update.note)).toContain('Сплата: 300');
+    expect(String(update.note)).toContain('Статус оплати: partially_paid');
+    expect(String(update.note)).toContain('Тег оплати: prepayment_300_paid');
     expect(update.discount_codes).toBeUndefined();
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'prepayment_300' },
@@ -257,9 +271,28 @@ describe('Shopify order mapping', () => {
     const update = buildOrderUpdateAfterPayment(123, 1200, 'invoice-1', 'full', [
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
-    ], 'manual, full_payment_unpaid');
+    ], 'manual, full_payment_unpaid', [
+      'Передзвоніть клієнту',
+      '',
+      'CRM оплата:',
+      'Payment: Monobank',
+      'Сума: 1200',
+      'Сплата: 0',
+      'Статус оплати: unpaid',
+      'Тег оплати: full_payment_unpaid',
+    ].join('\n'));
     expect(update.financial_status).toBe('paid');
     expect(update.tags).toBe('manual, full_payment_paid');
+    expect(String(update.note)).toContain('Передзвоніть клієнту');
+    expect(String(update.note)).toContain('CRM оплата:');
+    expect(String(update.note)).toContain('Payment: Monobank');
+    expect(String(update.note)).toContain('Сума: 1200');
+    expect(String(update.note)).toContain('Сплата: 1200');
+    expect(String(update.note)).toContain('Статус оплати: paid');
+    expect(String(update.note)).toContain('Тег оплати: full_payment_paid');
+    expect(String(update.note)).toContain('Invoice: invoice-1');
+    expect(String(update.note)).not.toContain('Сплата: 0');
+    expect(String(update.note).match(/CRM оплата:/g)?.length).toBe(1);
     expect(update.note_attributes).toEqual([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },

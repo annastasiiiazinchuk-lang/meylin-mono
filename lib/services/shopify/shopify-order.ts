@@ -14,6 +14,7 @@ interface ShopifyRestOrder {
   id: number;
   name: string;
   financial_status?: string;
+  note?: string;
   note_attributes?: Array<{ name?: string; value?: string }>;
   tags?: string;
 }
@@ -189,6 +190,38 @@ function legacyDeliveryMethodLabel(deliveryMethod: string): string {
 function formatPaymentAttributeAmount(amount: number): string {
   const rounded = Math.round(asNumber(amount) * 100) / 100;
   return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
+function buildPaymentCrmComment(params: {
+  paymentLabel: string;
+  paymentStatus: string;
+  paymentTag: string;
+  cartTotal: number;
+  paidAmount: number;
+  invoiceId?: string;
+}): string {
+  return [
+    'CRM оплата:',
+    `Payment: ${params.paymentLabel}`,
+    params.cartTotal ? `Сума: ${formatPaymentAttributeAmount(params.cartTotal)}` : '',
+    `Сплата: ${formatPaymentAttributeAmount(params.paidAmount)}`,
+    `Статус оплати: ${params.paymentStatus}`,
+    `Тег оплати: ${params.paymentTag}`,
+    env.sitniksSettlementAccountTitle ? `Р/Р: ${env.sitniksSettlementAccountTitle}` : '',
+    env.sitniksSettlementAccountId > 0 ? `Р/Р ID: ${env.sitniksSettlementAccountId}` : '',
+    params.invoiceId ? `Invoice: ${params.invoiceId}` : '',
+  ].filter(Boolean).join('\n');
+}
+
+function stripPaymentCrmComment(note: string): string {
+  return note.replace(/\n*CRM оплата:[\s\S]*$/u, '').trim();
+}
+
+function withPaymentCrmComment(note: unknown, paymentComment: string): string {
+  return [
+    stripPaymentCrmComment(asString(note)),
+    paymentComment,
+  ].filter(Boolean).join('\n\n');
 }
 
 function buildLegacyUtmValue(body: CheckoutPayload): string {
@@ -460,9 +493,17 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
   const cartTotal = getCartTotal(body);
   const lineItems = buildLineItems(body);
   const shippingPrice = 0;
-  const orderNote = isInternationalCheckout(body)
+  const baseOrderNote = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
     : asString(body.comment);
+  const unpaidPaymentTag = getUnpaidPaymentTag(body.payment_type);
+  const orderNote = withPaymentCrmComment(baseOrderNote, buildPaymentCrmComment({
+    paymentLabel: legacyPaymentLabel(body, isInternationalCheckout(body)),
+    paymentStatus: 'unpaid',
+    paymentTag: unpaidPaymentTag,
+    cartTotal,
+    paidAmount: 0,
+  }));
 
   if (lineItems.length === 0) throw new Error('Missing cart goods for Shopify order');
 
@@ -534,6 +575,7 @@ export function buildOrderUpdateAfterPayment(
   paymentType: PaymentType,
   existingNoteAttributes: Array<{ name?: string; value?: string }> = [],
   existingTags: unknown = '',
+  existingNote: unknown = '',
 ) {
   const isPrepayment = paymentType === 'prepayment';
   const normalizedPaymentType = normalizePaymentTypeForShopify(paymentType);
@@ -574,9 +616,18 @@ export function buildOrderUpdateAfterPayment(
   if (!noteAttributeByName.has('Сума') && !isPrepayment) {
     noteAttributeByName.set('Сума', paidAmount);
   }
+  const cartTotal = asNumber(noteAttributeByName.get('Сума')) || (isPrepayment ? 0 : amount);
 
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
+    note: withPaymentCrmComment(existingNote, buildPaymentCrmComment({
+      paymentLabel,
+      paymentStatus,
+      paymentTag: paidPaymentTag,
+      cartTotal,
+      paidAmount: amount,
+      invoiceId,
+    })),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
     note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
   };
@@ -640,6 +691,7 @@ export async function updateShopifyOrderAfterPayment(
         paymentType,
         currentOrder?.note_attributes as Array<{ name?: string; value?: string }> | undefined,
         currentOrder?.tags,
+        currentOrder?.note,
       ),
     }),
   });

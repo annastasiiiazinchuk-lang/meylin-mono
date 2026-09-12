@@ -29,6 +29,7 @@ export interface ShopifyOrder {
   financial_status: string;
   fulfillment_status: string | null;
   line_items: ShopifyLineItem[];
+  note?: string;
   note_attributes?: Array<{ name?: string; value?: string }>;
   created_at: string;
   updated_at: string;
