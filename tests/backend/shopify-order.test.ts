@@ -65,12 +65,16 @@ describe('Shopify order mapping', () => {
     });
   });
 
-  test('order additional details only include payment and shipping type', () => {
+  test('order additional details include payment and delivery fields for integrations', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
 
     expect(payload.order.note_attributes).toEqual([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'delivery_type', value: 'nova_poshta' },
+      { name: 'nova_poshta_delivery_method', value: 'branch' },
+      { name: 'nova_poshta_city', value: 'Київ' },
+      { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
     ]);
   });
 
@@ -168,6 +172,10 @@ describe('Shopify order mapping', () => {
     expect(payload.order.note_attributes).toEqual([
       { name: 'payment_type', value: 'monobank_parts' },
       { name: 'shipping_type', value: 'ukraine' },
+      { name: 'delivery_type', value: 'nova_poshta' },
+      { name: 'nova_poshta_delivery_method', value: 'branch' },
+      { name: 'nova_poshta_city', value: 'Київ' },
+      { name: 'nova_poshta_warehouse', value: 'Відділення №12' },
     ]);
 
     const update = buildOrderUpdateAfterPayment(123, 1200, 'parts-order-1', 'installments', [

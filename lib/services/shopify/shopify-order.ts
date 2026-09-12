@@ -248,6 +248,7 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     note_attributes: [
       { name: 'payment_type', value: paymentType },
       { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
+      ...buildShippingNoteAttributes(body),
     ].filter((attribute) => attribute.value),
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),
