@@ -144,14 +144,34 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
   const shipping = body.shipping || {};
   const isInternational = body.shipping_type === 'international' || shipping.type === 'international';
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
+  const country = isInternational ? asString(shipping.country) : 'Ukraine';
   const city = isInternational
     ? asString(shipping.intl_city) || asString(shipping.city)
     : asString(shipping.city);
   const warehouse = isInternational ? asString(shipping.warehouse) : asString(shipping.warehouse);
+  const address = asString(shipping.address);
+  const apartment = asString(shipping.apartment);
+  const postcode = asString(shipping.postcode);
   const cityRef = asString(shipping.city_ref);
   const warehouseRef = asString(shipping.warehouse_ref);
   const cashOnDelivery = body.payment_type === 'prepayment';
   const utm = buildLegacyUtmValue(body);
+  const internationalFields = isInternational
+    ? [
+        { name: 'Country', value: country },
+        { name: 'Address', value: address },
+        { name: 'Apartment', value: apartment },
+        { name: 'Postcode', value: postcode },
+        { name: '_delivery_country', value: country },
+        { name: '_delivery_address', value: address },
+        { name: '_delivery_apartment', value: apartment },
+        { name: '_delivery_postcode', value: postcode },
+        { name: '_delivery_zip', value: postcode },
+        { name: '_delivery_warehouse_zip', value: postcode },
+        { name: '_delivery_warehouse_name', value: warehouse },
+        { name: '_delivery_warehouse_address', value: address },
+      ]
+    : [];
 
   return [
     { name: 'Recipient Name', value: customerFullName(body) },
@@ -160,12 +180,12 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: 'Delivery Method', value: isInternational ? 'International delivery' : 'Нова пошта' },
     { name: 'City', value: city },
     { name: 'Post Office', value: warehouse },
-    { name: '_zip-code', value: asString(shipping.postcode) },
+    { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body) },
     { name: 'Comment', value: asString(body.comment) },
     { name: 'Shipping', value: isInternational ? 'International delivery' : 'За тарифами перевізника' },
     { name: '_provider', value: isInternational ? 'International delivery' : 'Нова пошта' },
-    { name: '_country', value: isInternational ? asString(shipping.country) : 'Ukraine' },
+    { name: '_country', value: country },
     { name: '_delivery_type', value: isInternational ? 'international' : deliveryMethod },
     { name: '_delivery_method', value: isInternational ? 'International delivery' : legacyDeliveryMethodLabel(deliveryMethod) },
     { name: '_delivery_city', value: city },
@@ -173,6 +193,7 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: '_delivery_warehouse', value: warehouse },
     { name: '_delivery_warehouse_CityRef', value: cityRef },
     { name: '_delivery_warehouse_Ref', value: warehouseRef },
+    ...internationalFields,
     { name: 'UTM', value: utm },
     { name: 'Currency rate', value: '1' },
     { name: 'Cash on delivery', value: cashOnDelivery ? 'true' : 'false' },

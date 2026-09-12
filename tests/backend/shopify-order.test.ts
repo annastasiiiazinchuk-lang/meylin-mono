@@ -134,14 +134,50 @@ describe('Shopify order mapping', () => {
         country: 'Poland',
         intl_city: 'Warsaw',
         address: 'Main street 1',
+        apartment: '2',
+        postcode: '00-001',
         shipping_price: 660,
       },
     };
     const payload = buildShopifyOrderPayload(internationalPayload, getPaymentAmount(internationalPayload));
+    const shippingAddress = payload.order.shipping_address as Record<string, unknown>;
 
     expect(getPaymentAmount(internationalPayload)).toBe(1200);
     expect(getShippingPrice(internationalPayload)).toBe(0);
     expect(payload.order.shipping_lines).toBeUndefined();
+    expect(shippingAddress).toMatchObject({
+      address1: 'Main street 1',
+      address2: '2',
+      city: 'Warsaw',
+      country: 'Poland',
+      zip: '00-001',
+    });
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'shipping_type', value: 'international' },
+      { name: 'delivery_type', value: 'international' },
+      { name: 'delivery_country', value: 'Poland' },
+      { name: 'delivery_city', value: 'Warsaw' },
+      { name: 'delivery_address', value: 'Main street 1' },
+      { name: 'delivery_apartment', value: '2' },
+      { name: 'delivery_postcode', value: '00-001' },
+      { name: 'Delivery Method', value: 'International delivery' },
+      { name: 'Country', value: 'Poland' },
+      { name: 'City', value: 'Warsaw' },
+      { name: 'Address', value: 'Main street 1' },
+      { name: 'Apartment', value: '2' },
+      { name: 'Postcode', value: '00-001' },
+      { name: '_country', value: 'Poland' },
+      { name: '_delivery_type', value: 'international' },
+      { name: '_delivery_method', value: 'International delivery' },
+      { name: '_delivery_country', value: 'Poland' },
+      { name: '_delivery_city', value: 'Warsaw' },
+      { name: '_delivery_address', value: 'Main street 1' },
+      { name: '_delivery_apartment', value: '2' },
+      { name: '_delivery_postcode', value: '00-001' },
+      { name: '_delivery_zip', value: '00-001' },
+      { name: '_delivery_warehouse_zip', value: '00-001' },
+      { name: '_delivery_warehouse_address', value: 'Main street 1' },
+    ]));
   });
 
   test('prepayment amount is fixed at 300', () => {
