@@ -77,6 +77,11 @@ describe('Shopify order mapping', () => {
     expect(String(payload.order.note)).toContain('Сплата: 0');
     expect(String(payload.order.note)).toContain('Статус оплати: unpaid');
     expect(String(payload.order.note)).toContain('Тег оплати: full_payment_unpaid');
+    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
+      .find((attribute) => attribute.name === 'Comment');
+    expect(commentAttribute?.value).toContain('CRM оплата:');
+    expect(commentAttribute?.value).toContain('Сплата: 0');
+    expect(commentAttribute?.value).toContain('Тег оплати: full_payment_unpaid');
     expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
       { name: 'payment_type', value: 'full_payment' },
       { name: 'shipping_type', value: 'ukraine' },
@@ -264,6 +269,18 @@ describe('Shopify order mapping', () => {
       { name: 'Paid amount', value: '300' },
       { name: 'monobank_paid_amount', value: '300' },
       { name: 'monobank_invoice_id', value: 'invoice-1' },
+      {
+        name: 'Comment',
+        value: [
+          'CRM оплата:',
+          'Payment: Передплата Monobank',
+          'Сума: 1200',
+          'Сплата: 300',
+          'Статус оплати: partially_paid',
+          'Тег оплати: prepayment_300_paid',
+          'Invoice: invoice-1',
+        ].join('\n'),
+      },
     ]);
   });
 
@@ -306,6 +323,18 @@ describe('Shopify order mapping', () => {
       { name: 'monobank_paid_amount', value: '1200' },
       { name: 'monobank_invoice_id', value: 'invoice-1' },
       { name: 'Сума', value: '1200' },
+      {
+        name: 'Comment',
+        value: [
+          'CRM оплата:',
+          'Payment: Monobank',
+          'Сума: 1200',
+          'Сплата: 1200',
+          'Статус оплати: paid',
+          'Тег оплати: full_payment_paid',
+          'Invoice: invoice-1',
+        ].join('\n'),
+      },
     ]);
   });
 
@@ -347,6 +376,18 @@ describe('Shopify order mapping', () => {
       { name: 'monobank_paid_amount', value: '1200' },
       { name: 'monobank_invoice_id', value: 'parts-order-1' },
       { name: 'Сума', value: '1200' },
+      {
+        name: 'Comment',
+        value: [
+          'CRM оплата:',
+          'Payment: Покупка частинами Monobank',
+          'Сума: 1200',
+          'Сплата: 1200',
+          'Статус оплати: paid',
+          'Тег оплати: monobank_parts_paid',
+          'Invoice: parts-order-1',
+        ].join('\n'),
+      },
     ]);
   });
 

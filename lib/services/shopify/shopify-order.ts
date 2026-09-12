@@ -301,6 +301,13 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
   const warehouseRef = asString(shipping.warehouse_ref);
   const cashOnDelivery = body.payment_type === 'prepayment';
   const utm = buildLegacyUtmValue(body);
+  const paymentCrmComment = buildPaymentCrmComment({
+    paymentLabel: legacyPaymentLabel(body, isInternational),
+    paymentStatus: 'unpaid',
+    paymentTag: unpaidPaymentTag,
+    cartTotal: getCartTotal(body),
+    paidAmount: 0,
+  });
   const internationalFields = isInternational
     ? [
         { name: '_country-code', value: countryCode },
@@ -330,7 +337,7 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: 'Post Office', value: warehouse },
     { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
-    { name: 'Comment', value: asString(body.comment) },
+    { name: 'Comment', value: withPaymentCrmComment(body.comment, paymentCrmComment) },
     { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
     { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: '_country', value: country },
@@ -617,17 +624,19 @@ export function buildOrderUpdateAfterPayment(
     noteAttributeByName.set('Сума', paidAmount);
   }
   const cartTotal = asNumber(noteAttributeByName.get('Сума')) || (isPrepayment ? 0 : amount);
+  const paymentCrmComment = buildPaymentCrmComment({
+    paymentLabel,
+    paymentStatus,
+    paymentTag: paidPaymentTag,
+    cartTotal,
+    paidAmount: amount,
+    invoiceId,
+  });
+  noteAttributeByName.set('Comment', withPaymentCrmComment(noteAttributeByName.get('Comment'), paymentCrmComment));
 
   const orderUpdate: Record<string, unknown> = {
     id: orderId,
-    note: withPaymentCrmComment(existingNote, buildPaymentCrmComment({
-      paymentLabel,
-      paymentStatus,
-      paymentTag: paidPaymentTag,
-      cartTotal,
-      paidAmount: amount,
-      invoiceId,
-    })),
+    note: withPaymentCrmComment(existingNote, paymentCrmComment),
     tags: withPaymentStatusTag(existingTags, paidPaymentTag),
     note_attributes: Array.from(noteAttributeByName.entries()).map(([name, value]) => ({ name, value })),
   };

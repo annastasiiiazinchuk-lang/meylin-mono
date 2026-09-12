@@ -123,6 +123,64 @@ function buildItemNotes(item: CheckoutPayload['goods'][number]): string | undefi
   return properties.length ? properties.join('\n') : undefined;
 }
 
+function formatSitniksAmount(amount: number): string {
+  const rounded = Math.round(asNumber(amount) * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : rounded.toFixed(2);
+}
+
+function normalizePaymentKind(paymentType: unknown): 'full' | 'prepayment' | 'installments' {
+  const value = asString(paymentType);
+  if (value === 'prepayment') return 'prepayment';
+  if (value === 'installments') return 'installments';
+  return 'full';
+}
+
+function getSitniksPaymentLabel(paymentType: unknown): string {
+  const kind = normalizePaymentKind(paymentType);
+  if (kind === 'prepayment') return 'Передплата 300 грн';
+  if (kind === 'installments') return 'Покупка Частинами monobank';
+  return 'Повна оплата';
+}
+
+function getCrmPaymentLabel(paymentType: unknown, paid = false): string {
+  const kind = normalizePaymentKind(paymentType);
+  if (kind === 'prepayment') return paid ? 'Передплата Monobank' : 'Накладений платіж';
+  if (kind === 'installments') return 'Покупка частинами Monobank';
+  return 'Monobank';
+}
+
+function getPaymentTag(paymentType: unknown, paid: boolean): string {
+  const kind = normalizePaymentKind(paymentType);
+  if (kind === 'prepayment') return paid ? 'prepayment_300_paid' : 'prepayment_300_unpaid';
+  if (kind === 'installments') return paid ? 'monobank_parts_paid' : 'monobank_parts_unpaid';
+  return paid ? 'full_payment_paid' : 'full_payment_unpaid';
+}
+
+function getCrmPaymentStatus(paymentType: unknown, paid: boolean): string {
+  if (!paid) return 'unpaid';
+  return normalizePaymentKind(paymentType) === 'prepayment' ? 'partially_paid' : 'paid';
+}
+
+function buildCrmPaymentComment(params: {
+  paymentType: unknown;
+  cartTotal: number;
+  paidAmount: number;
+  paid: boolean;
+  invoiceId?: string;
+}): string {
+  return [
+    'CRM оплата:',
+    `Payment: ${getCrmPaymentLabel(params.paymentType, params.paid)}`,
+    params.cartTotal ? `Сума: ${formatSitniksAmount(params.cartTotal)}` : '',
+    `Сплата: ${formatSitniksAmount(params.paidAmount)}`,
+    `Статус оплати: ${getCrmPaymentStatus(params.paymentType, params.paid)}`,
+    `Тег оплати: ${getPaymentTag(params.paymentType, params.paid)}`,
+    env.sitniksSettlementAccountTitle ? `Р/Р: ${env.sitniksSettlementAccountTitle}` : '',
+    env.sitniksSettlementAccountId > 0 ? `Р/Р ID: ${env.sitniksSettlementAccountId}` : '',
+    params.invoiceId ? `Invoice: ${params.invoiceId}` : '',
+  ].filter(Boolean).join('\n');
+}
+
 function parseSitniksOfferMap(): Record<string, SitniksOfferMapEntry> {
   if (!env.sitniksOfferMap) return {};
 
@@ -315,11 +373,7 @@ export function buildSitniksPayment(body: CheckoutPayload) {
 
   const cartTotal = getCartTotal(body);
   const paymentAmount = getPaymentAmount(body);
-  const paymentType = body.payment_type === 'prepayment'
-    ? 'Передплата 300 грн'
-    : body.payment_type === 'installments'
-      ? 'Покупка Частинами monobank'
-      : 'Повна оплата';
+  const paymentType = getSitniksPaymentLabel(body.payment_type);
   const balance = Math.max(0, cartTotal - paymentAmount);
 
   return {
@@ -329,6 +383,12 @@ export function buildSitniksPayment(body: CheckoutPayload) {
       paymentType,
       `Сума замовлення: ${cartTotal} грн`,
       balance ? `Залишок/накладний платіж: ${balance} грн` : '',
+      buildCrmPaymentComment({
+        paymentType: body.payment_type,
+        cartTotal,
+        paidAmount: 0,
+        paid: false,
+      }),
     ].filter(Boolean).join('\n'),
   };
 }
@@ -414,11 +474,7 @@ export function buildSitniksOrderPayload(
 ) {
   const customer = body.customer || {};
   const cartTotal = getCartTotal(body);
-  const paymentType = body.payment_type === 'prepayment'
-    ? 'Передплата 300 грн'
-    : body.payment_type === 'installments'
-      ? 'Покупка Частинами monobank'
-      : 'Повна оплата';
+  const paymentType = getSitniksPaymentLabel(body.payment_type);
   const goodsComment = buildGoodsComment(body);
   const deliveryComment = buildDeliveryComment(body);
   const clientComment = isInternationalCheckout(body)
@@ -428,6 +484,12 @@ export function buildSitniksOrderPayload(
     `Shopify order: ${shopifyOrder.name || shopifyOrder.id}`,
     `Варіант оплати: ${paymentType}`,
     `Сума товарів: ${cartTotal} грн`,
+    buildCrmPaymentComment({
+      paymentType: body.payment_type,
+      cartTotal,
+      paidAmount: 0,
+      paid: false,
+    }),
     goodsComment ? `Товари:\n${goodsComment}` : '',
     deliveryComment,
   ].filter(Boolean).join('\n');
@@ -543,11 +605,7 @@ export async function sendSitniksPaymentTransaction(
   const paidAmount = asNumber(webhookBody.finalAmount || webhookBody.amount) / 100;
   if (!paidAmount) return null;
 
-  const paymentType = payment.paymentType === 'prepayment'
-    ? 'Передплата 300 грн'
-    : payment.paymentType === 'installments'
-      ? 'Покупка Частинами monobank'
-      : 'Повна оплата';
+  const paymentType = getSitniksPaymentLabel(payment.paymentType);
   const comment = [
     `Monobank: ${paymentType}`,
     `Shopify order: ${payment.shopifyOrderName || payment.shopifyOrderId || payment.orderId}`,
@@ -555,6 +613,13 @@ export async function sendSitniksPaymentTransaction(
     `Сплачено онлайн: ${paidAmount} грн`,
     payment.cartTotal ? `Сума замовлення: ${payment.cartTotal} грн` : '',
     payment.cartTotal ? `Залишок: ${Math.max(0, payment.cartTotal - paidAmount)} грн` : '',
+    buildCrmPaymentComment({
+      paymentType: payment.paymentType,
+      cartTotal: payment.cartTotal || paidAmount,
+      paidAmount,
+      paid: true,
+      invoiceId: webhookBody.invoiceId || payment.invoiceId || '',
+    }),
   ].filter(Boolean).join('\n');
 
   const payload = {
@@ -755,11 +820,7 @@ export function buildSitniksPaymentStatusComment(
   webhookBody: MonobankWebhookBody,
 ): string {
   const paidAmount = asNumber(webhookBody.finalAmount || webhookBody.amount) / 100;
-  const paymentType = payment.paymentType === 'prepayment'
-    ? 'Передплата 300 грн'
-    : payment.paymentType === 'installments'
-      ? 'Покупка Частинами monobank'
-      : 'Повна оплата';
+  const paymentType = getSitniksPaymentLabel(payment.paymentType);
   const balance = payment.cartTotal ? Math.max(0, payment.cartTotal - paidAmount) : 0;
 
   return [
@@ -769,6 +830,13 @@ export function buildSitniksPaymentStatusComment(
     `Сплачено онлайн: ${paidAmount} грн`,
     payment.cartTotal ? `Сума замовлення: ${payment.cartTotal} грн` : '',
     payment.cartTotal ? `Залишок: ${balance} грн` : '',
+    buildCrmPaymentComment({
+      paymentType: payment.paymentType,
+      cartTotal: payment.cartTotal || paidAmount,
+      paidAmount,
+      paid: true,
+      invoiceId: webhookBody.invoiceId || payment.invoiceId || '',
+    }),
   ].filter(Boolean).join('\n');
 }
 

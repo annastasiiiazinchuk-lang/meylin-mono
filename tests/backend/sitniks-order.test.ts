@@ -78,7 +78,10 @@ describe('Sitniks order mapping', () => {
     expect(String(payload.managerComment)).toContain('Відділення №12');
     expect(String(payload.managerComment)).toContain('SKU/variant: SKU-1');
     expect(String(payload.managerComment)).not.toContain('Створено з кастомного Shopify checkout');
-    expect(String(payload.managerComment)).not.toContain('Статус оплати');
+    expect(String(payload.managerComment)).toContain('CRM оплата:');
+    expect(String(payload.managerComment)).toContain('Сплата: 0');
+    expect(String(payload.managerComment)).toContain('Статус оплати: unpaid');
+    expect(String(payload.managerComment)).toContain('Тег оплати: prepayment_300_unpaid');
     expect(String(payload.managerComment)).not.toContain('Залишок');
     expect(payload.payment).toBeUndefined();
   });
@@ -138,11 +141,16 @@ describe('Sitniks order mapping', () => {
 
     const payment = buildSitniksPayment(basePayload);
 
-    expect(payment).toEqual({
-      settlementAccountId: 11287,
-      amount: 300,
-      description: 'Передплата 300 грн\nСума замовлення: 1200 грн\nЗалишок/накладний платіж: 900 грн',
-    });
+    expect(payment?.settlementAccountId).toBe(11287);
+    expect(payment?.amount).toBe(300);
+    expect(payment?.description).toContain('Передплата 300 грн');
+    expect(payment?.description).toContain('Сума замовлення: 1200 грн');
+    expect(payment?.description).toContain('Залишок/накладний платіж: 900 грн');
+    expect(payment?.description).toContain('CRM оплата:');
+    expect(payment?.description).toContain('Сплата: 0');
+    expect(payment?.description).toContain('Статус оплати: unpaid');
+    expect(payment?.description).toContain('Тег оплати: prepayment_300_unpaid');
+    expect(payment?.description).toContain('Р/Р ID: 11287');
 
     env.sitniksSettlementAccountId = originalSettlementAccountId;
   });
@@ -324,6 +332,8 @@ describe('Sitniks order mapping', () => {
 
     expect(comment).toContain('Оплату Monobank підтверджено: Покупка Частинами monobank');
     expect(comment).toContain('Сплачено онлайн: 1200 грн');
+    expect(comment).toContain('Статус оплати: paid');
+    expect(comment).toContain('Тег оплати: monobank_parts_paid');
   });
 
   test('builds payment status comment after Monobank success', () => {
@@ -346,6 +356,8 @@ describe('Sitniks order mapping', () => {
     expect(comment).toContain('Invoice: invoice-new');
     expect(comment).toContain('Сплачено онлайн: 300 грн');
     expect(comment).toContain('Залишок: 5700 грн');
+    expect(comment).toContain('Статус оплати: partially_paid');
+    expect(comment).toContain('Тег оплати: prepayment_300_paid');
   });
 
   test('builds cashless Sitniks receipt payload for paid Shopify order', () => {
