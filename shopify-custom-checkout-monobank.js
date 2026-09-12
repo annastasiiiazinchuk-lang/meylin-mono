@@ -2,7 +2,7 @@
   const API_BASE_URL = 'https://meylin-mono.onrender.com';
   const PREPAYMENT_AMOUNT = 300;
   const INTERNATIONAL_DELIVERY_FEE = 0;
-  const SCRIPT_VERSION = 'i18n-2026-06-18-1238';
+  const SCRIPT_VERSION = 'meylin-2026-09-12-payment-redirect';
   const SHOPIFY_ROUTES_ROOT = window.Shopify?.routes?.root || '/';
   const UPSELL_PRODUCTS = window.WOODEN_UPSELL_PRODUCTS || [
     // {
