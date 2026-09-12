@@ -74,6 +74,7 @@
       creatingPayment: 'Створюємо оплату...',
       createPaymentError: 'Не вдалося створити оплату',
       clearingCart: 'Очищаємо кошик...',
+      redirectingToPayment: 'Переходимо до оплати...',
       paymentCreateAlert: 'Помилка створення оплати',
       cartUnavailable: 'Кошик недоступний',
       firstName: "Ім'я",
@@ -155,6 +156,7 @@
       creatingPayment: 'Creating payment...',
       createPaymentError: 'Could not create payment',
       clearingCart: 'Clearing cart...',
+      redirectingToPayment: 'Redirecting to payment...',
       paymentCreateAlert: 'Payment creation error',
       cartUnavailable: 'Cart is unavailable',
       firstName: 'First name',
@@ -236,6 +238,7 @@
       creatingPayment: 'Tworzymy płatność...',
       createPaymentError: 'Nie udało się utworzyć płatności',
       clearingCart: 'Czyścimy koszyk...',
+      redirectingToPayment: 'Przechodzimy do płatności...',
       paymentCreateAlert: 'Błąd tworzenia płatności',
       cartUnavailable: 'Koszyk jest niedostępny',
       firstName: 'Imię',
@@ -744,6 +747,25 @@
 
   showDebugStatus('script loaded');
   debugLog('script_loaded', SCRIPT_VERSION, window.location.href, navigator.userAgent);
+
+  function warmCheckoutApi() {
+    fetch(`${API_BASE_URL}/api/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      mode: 'cors',
+    }).catch((error) => {
+      console.warn('Checkout API warmup failed:', error);
+    });
+  }
+
+  function clearCartBeforePaymentRedirect() {
+    clearCart().catch((error) => {
+      console.warn('Cart clear before payment redirect failed:', error);
+    });
+  }
+
+  warmCheckoutApi();
+  window.setTimeout(warmCheckoutApi, 2000);
 
   function readJsonStorage(key) {
     try {
@@ -2114,16 +2136,17 @@
         throw new Error(data.details || data.error || t('createPaymentError'));
       }
 
-      submitBtn.textContent = t('clearingCart');
-      await clearCart();
-
       if (data.paymentFlow === 'monobank_parts') {
+        submitBtn.textContent = t('clearingCart');
+        await clearCart();
         alert(data.message || t('installmentsRequestSent'));
         window.location.href = data.redirectUrl || shopifyRoute('/');
         return;
       }
 
-      window.location.href = data.invoiceUrl;
+      submitBtn.textContent = t('redirectingToPayment');
+      clearCartBeforePaymentRedirect();
+      window.location.assign(data.invoiceUrl);
     } catch (error) {
       alert(error instanceof Error ? error.message : t('paymentCreateAlert'));
       submitBtn.disabled = false;

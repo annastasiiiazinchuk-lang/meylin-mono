@@ -729,6 +729,7 @@ document.addEventListener('DOMContentLoaded', function () {
       creatingPayment: 'Створюємо оплату...',
       createPaymentError: 'Не вдалося створити оплату',
       clearingCart: 'Очищаємо кошик...',
+      redirectingToPayment: 'Переходимо до оплати...',
       paymentCreateAlert: 'Помилка створення оплати',
       cartUnavailable: 'Кошик недоступний',
       firstName: "Ім'я",
@@ -803,6 +804,7 @@ document.addEventListener('DOMContentLoaded', function () {
       creatingPayment: 'Creating payment...',
       createPaymentError: 'Could not create payment',
       clearingCart: 'Clearing cart...',
+      redirectingToPayment: 'Redirecting to payment...',
       paymentCreateAlert: 'Payment creation error',
       cartUnavailable: 'Cart is unavailable',
       firstName: 'First name',
@@ -1154,6 +1156,25 @@ document.addEventListener('DOMContentLoaded', function () {
 
   showDebugStatus('script loaded');
   debugLog('script_loaded', SCRIPT_VERSION, window.location.href, navigator.userAgent);
+
+  function warmCheckoutApi() {
+    fetch(`${API_BASE_URL}/api/health`, {
+      method: 'GET',
+      cache: 'no-store',
+      mode: 'cors',
+    }).catch((error) => {
+      console.warn('Checkout API warmup failed:', error);
+    });
+  }
+
+  function clearCartBeforePaymentRedirect() {
+    clearCart().catch((error) => {
+      console.warn('Cart clear before payment redirect failed:', error);
+    });
+  }
+
+  warmCheckoutApi();
+  window.setTimeout(warmCheckoutApi, 2000);
 
   function readJsonStorage(key) {
     try {
@@ -2640,10 +2661,9 @@ document.addEventListener('DOMContentLoaded', function () {
       }
 
       savePendingPaymentForPurchase(data);
-      submitBtn.textContent = t('clearingCart');
-      await clearCart();
-
-      window.location.href = data.invoiceUrl;
+      submitBtn.textContent = t('redirectingToPayment');
+      clearCartBeforePaymentRedirect();
+      window.location.assign(data.invoiceUrl);
     } catch (error) {
       alert(error instanceof Error ? error.message : t('paymentCreateAlert'));
       submitBtn.disabled = false;
