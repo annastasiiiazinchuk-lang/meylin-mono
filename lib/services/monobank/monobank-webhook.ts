@@ -4,14 +4,20 @@ import type { MonobankWebhookBody } from '../../types/monobank';
 import { asNumber } from '../../utils/format';
 import {
   getPaymentByInvoiceId,
+  markShopifyOrderCreated,
   markPaymentFailed,
   markPaymentSuccess,
   markPaymentReceiptCreated,
   markSitniksPaymentSynced,
   markSitniksPaymentSyncFailed,
+  paymentToCheckoutPayload,
   paymentToMetadata,
 } from '../payments/payment-store';
-import { getOrderIdFromMonobankReference, updateShopifyOrderAfterPayment } from '../shopify/shopify-order';
+import {
+  createShopifyOrderAfterPayment,
+  getOrderIdFromMonobankReference,
+  updateShopifyOrderAfterPayment,
+} from '../shopify/shopify-order';
 import {
   createSitniksReceiptAfterPayment,
   sendSitniksPaymentTransaction,
@@ -109,27 +115,13 @@ export async function processMonobankWebhook(body: MonobankWebhookBody): Promise
     cartTotal: getPaidAmount(body),
     reference: body.reference || '',
   };
-  const payment = paymentToMetadata(storedPayment) || fallbackPayment;
-
-  if (!payment.shopifyOrderId) {
-    console.error('Shopify order id not found for invoice:', body.invoiceId);
-    return json({ error: 'Shopify order id not found' }, 404);
-  }
-
   try {
-    console.log('Payment mapping resolved:', {
-      invoiceId: body.invoiceId,
-      shopifyOrderId: payment.shopifyOrderId,
-      paymentType: payment.paymentType,
-      amount: payment.amount,
-    });
-
     if (storedPayment && !isMonobankWebhookAmountConfirmed(storedPayment.amount, body)) {
       const paidAmount = getPaidAmount(body);
       console.error('Monobank success amount mismatch; payment sync skipped:', {
         invoiceId: body.invoiceId,
-        shopifyOrderId: payment.shopifyOrderId,
-        paymentType: payment.paymentType,
+        shopifyOrderId: storedPayment.shopifyOrderId?.toString(),
+        paymentType: storedPayment.paymentType,
         expectedAmount: storedPayment.amount,
         paidAmount,
       });
@@ -150,19 +142,55 @@ export async function processMonobankWebhook(body: MonobankWebhookBody): Promise
       updatedPayment = await markPaymentSuccess(storedPayment.id, body);
     }
 
-    if (env.shopifyPaymentUpdateDelaySeconds > 0) {
-      const delayMs = env.shopifyPaymentUpdateDelaySeconds * 1000;
-      console.log('Delaying Shopify payment update:', {
-        invoiceId: body.invoiceId,
-        shopifyOrderId: payment.shopifyOrderId,
-        delaySeconds: env.shopifyPaymentUpdateDelaySeconds,
+    if (updatedPayment && !updatedPayment.shopifyOrderId) {
+      const checkoutPayload = paymentToCheckoutPayload(updatedPayment);
+      if (!checkoutPayload) {
+        console.error('Checkout payload not found for invoice:', body.invoiceId);
+        return json({ error: 'Checkout payload not found' }, 404);
+      }
+
+      const shopifyOrder = await createShopifyOrderAfterPayment(
+        checkoutPayload,
+        getPaidAmount(body),
+        body.invoiceId,
+      );
+      updatedPayment = await markShopifyOrderCreated({
+        paymentId: updatedPayment.id,
+        shopifyOrderId: shopifyOrder.id,
+        shopifyOrderName: shopifyOrder.name,
       });
-      setTimeout(() => {
-        syncShopifyAfterMonobankSuccess(payment, body).catch((error) => {
-          console.error('Delayed Monobank success sync failed:', error);
+    }
+
+    const payment = paymentToMetadata(updatedPayment || storedPayment) || fallbackPayment;
+    if (!payment.shopifyOrderId) {
+      console.error('Shopify order id not found for invoice:', body.invoiceId);
+      return json({ error: 'Shopify order id not found' }, 404);
+    }
+
+    console.log('Payment mapping resolved:', {
+      invoiceId: body.invoiceId,
+      shopifyOrderId: payment.shopifyOrderId,
+      paymentType: payment.paymentType,
+      amount: payment.amount,
+    });
+
+    if (updatedPayment?.shopifyOrderId && storedPayment?.shopifyOrderId) {
+      if (env.shopifyPaymentUpdateDelaySeconds > 0) {
+        const delayMs = env.shopifyPaymentUpdateDelaySeconds * 1000;
+        console.log('Delaying Shopify payment update:', {
+          invoiceId: body.invoiceId,
+          shopifyOrderId: payment.shopifyOrderId,
+          delaySeconds: env.shopifyPaymentUpdateDelaySeconds,
         });
-      }, delayMs);
-    } else {
+        setTimeout(() => {
+          syncShopifyAfterMonobankSuccess(payment, body).catch((error) => {
+            console.error('Delayed Monobank success sync failed:', error);
+          });
+        }, delayMs);
+      } else {
+        await syncShopifyAfterMonobankSuccess(payment, body);
+      }
+    } else if (!storedPayment) {
       await syncShopifyAfterMonobankSuccess(payment, body);
     }
 

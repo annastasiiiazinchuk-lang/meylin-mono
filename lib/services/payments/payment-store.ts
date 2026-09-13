@@ -1,6 +1,7 @@
 import { Prisma } from '@prisma/client';
 import { prisma } from '../../prisma';
 import type { CheckoutPayload, PaymentType, StoredPaymentMetadata } from '../../types/checkout';
+import { asNumber, asString } from '../../utils/format';
 
 function toJson(value: unknown): Prisma.InputJsonValue | undefined {
   if (value === undefined) return undefined;
@@ -19,7 +20,7 @@ export async function savePendingPayment(params: {
   reference: string;
   amount: number;
   paymentType: PaymentType;
-  shopifyOrderId: number;
+  shopifyOrderId?: number;
   shopifyOrderName?: string;
   body: CheckoutPayload;
   cartTotal: number;
@@ -35,21 +36,24 @@ export async function savePendingPayment(params: {
       customerName,
       customerPhone: customer.phone || '',
       customerEmail: customer.email || '',
-      orderId: String(params.shopifyOrderId),
+      orderId: params.shopifyOrderId ? String(params.shopifyOrderId) : params.reference,
       reference: params.reference,
       invoiceId: params.invoiceId,
       pageUrl: params.invoiceUrl,
-      destination: `Order ${params.shopifyOrderName || params.shopifyOrderId}`,
+      destination: params.shopifyOrderId
+        ? `Order ${params.shopifyOrderName || params.shopifyOrderId}`
+        : `Checkout ${params.reference}`,
       goods: toJsonArray(params.body.goods || []),
       shipping: toJson(params.body.shipping),
       utm: toJson(params.body.utm),
       tracking: toJson(tracking),
       comment: params.body.comment || undefined,
-      shopifyOrderId: BigInt(params.shopifyOrderId),
+      shopifyOrderId: params.shopifyOrderId ? BigInt(params.shopifyOrderId) : undefined,
       shopifyOrderName: params.shopifyOrderName,
       paymentType: params.paymentType,
       cartTotal: params.cartTotal,
       shopifyOrderData: toJson({
+        checkoutPayload: params.body,
         customer,
         tracking,
         locale: params.body.locale,
@@ -60,11 +64,26 @@ export async function savePendingPayment(params: {
       amount: params.amount,
       invoiceId: params.invoiceId,
       pageUrl: params.invoiceUrl,
-      shopifyOrderId: BigInt(params.shopifyOrderId),
+      shopifyOrderId: params.shopifyOrderId ? BigInt(params.shopifyOrderId) : undefined,
       shopifyOrderName: params.shopifyOrderName,
       paymentType: params.paymentType,
       cartTotal: params.cartTotal,
       tracking: toJson(tracking),
+    },
+  });
+}
+
+export async function markShopifyOrderCreated(params: {
+  paymentId: string;
+  shopifyOrderId: number;
+  shopifyOrderName?: string;
+}) {
+  return prisma.payment.update({
+    where: { id: params.paymentId },
+    data: {
+      orderId: String(params.shopifyOrderId),
+      shopifyOrderId: BigInt(params.shopifyOrderId),
+      shopifyOrderName: params.shopifyOrderName,
     },
   });
 }
@@ -166,13 +185,54 @@ export async function markPaymentSuccess(id: string, webhookPayload: unknown) {
   });
 }
 
+function paymentKind(paymentType: unknown): PaymentType {
+  if (paymentType === 'prepayment') return 'prepayment';
+  if (paymentType === 'installments') return 'installments';
+  return 'full';
+}
+
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+export function paymentToCheckoutPayload(payment: Awaited<ReturnType<typeof getPaymentByInvoiceId>>): CheckoutPayload | null {
+  if (!payment) return null;
+
+  const orderData = readRecord(payment.shopifyOrderData);
+  const storedPayload = readRecord(orderData.checkoutPayload);
+  const customer = readRecord(storedPayload.customer || orderData.customer);
+  const shipping = readRecord(storedPayload.shipping || payment.shipping);
+  const shippingType = asString(storedPayload.shipping_type || shipping.type);
+  const tracking = readRecord(payment.tracking || orderData.tracking || payment.utm);
+
+  return {
+    ...(storedPayload as Partial<CheckoutPayload>),
+    locale: asString(storedPayload.locale || orderData.locale),
+    payment_type: paymentKind(payment.paymentType),
+    amount: asNumber(payment.amount),
+    cart_total: asNumber(payment.cartTotal) || asNumber(payment.amount),
+    cart_token: asString(storedPayload.cart_token),
+    customer: {
+      first_name: asString(customer.first_name) || payment.customerName.split(' ')[0] || '',
+      last_name: asString(customer.last_name) || payment.customerName.split(' ').slice(1).join(' '),
+      phone: asString(customer.phone) || payment.customerPhone,
+      email: asString(customer.email) || payment.customerEmail,
+    },
+    shipping_type: shippingType === 'international' ? 'international' : 'ukraine',
+    shipping: shipping as CheckoutPayload['shipping'],
+    goods: Array.isArray(payment.goods) ? payment.goods as CheckoutPayload['goods'] : [],
+    comment: payment.comment || asString(storedPayload.comment),
+    personal_data_consent: Boolean(storedPayload.personal_data_consent || orderData.personalDataConsent),
+    tracking,
+    utm: readRecord(payment.utm),
+  };
+}
+
 export function paymentToMetadata(payment: Awaited<ReturnType<typeof getPaymentByInvoiceId>>): StoredPaymentMetadata | null {
   if (!payment?.shopifyOrderId) return null;
-  const paymentType: PaymentType = payment.paymentType === 'prepayment'
-    ? 'prepayment'
-    : payment.paymentType === 'installments'
-      ? 'installments'
-      : 'full';
+  const paymentType = paymentKind(payment.paymentType);
 
   return {
     shopifyOrderId: Number(payment.shopifyOrderId),

@@ -12,9 +12,13 @@ export interface MonobankInvoice {
   paymentType: PaymentType;
 }
 
+function createCheckoutReference(): string {
+  return `checkout-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+}
+
 export async function createMonobankInvoice(
   body: CheckoutPayload,
-  shopifyOrder: { id: number; name: string },
+  shopifyOrder: { id: number; name: string } | null,
   amount: number,
 ): Promise<MonobankInvoice> {
   if (!env.monoToken) throw new Error('Missing MONO_TOKEN');
@@ -24,13 +28,17 @@ export async function createMonobankInvoice(
   const customer = body.customer || {};
   const customerName = `${asString(customer.first_name)} ${asString(customer.last_name)}`.trim() || 'Customer';
   const customerPhone = asString(customer.phone);
-  const reference = `shopify-${shopifyOrder.id}-${Date.now()}`;
+  const reference = shopifyOrder?.id
+    ? `shopify-${shopifyOrder.id}-${Date.now()}`
+    : createCheckoutReference();
   const requestBody = {
     amount: Math.round(amount * 100),
     ccy: 980,
     merchantPaymInfo: {
       reference,
-      destination: `Order ${shopifyOrder.name}: ${customerName}${customerPhone ? ` (${customerPhone})` : ''}`,
+      destination: shopifyOrder?.name
+        ? `Order ${shopifyOrder.name}: ${customerName}${customerPhone ? ` (${customerPhone})` : ''}`
+        : `Meylin checkout: ${customerName}${customerPhone ? ` (${customerPhone})` : ''}`,
     },
     redirectUrl: env.redirectUrl,
     webHookUrl: env.webhookUrl,

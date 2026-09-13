@@ -1,6 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import {
   buildOrderUpdateAfterPayment,
+  buildPaidShopifyOrderPayload,
   buildShippingAddress,
   buildShopifyOrderPayload,
   getPaymentAmount,
@@ -238,6 +239,92 @@ describe('Shopify order mapping', () => {
       { name: 'Cash on delivery', value: 'true' },
       { name: 'Partial payment value - Monobank', value: '300 UAH' },
     ]));
+  });
+
+  test('full payment order created after Monobank success is paid immediately', () => {
+    const payload = buildPaidShopifyOrderPayload(basePayload, 1200, 'invoice-paid-1');
+
+    expect(payload.order.financial_status).toBe('paid');
+    expect(payload.order.tags).toBe('full_payment_paid');
+    expect(String(payload.order.note)).toContain('Payment: Monobank');
+    expect(String(payload.order.note)).toContain('Сума: 1200');
+    expect(String(payload.order.note)).toContain('Сплата: 1200');
+    expect(String(payload.order.note)).toContain('Статус оплати: paid');
+    expect(String(payload.order.note)).toContain('Тег оплати: full_payment_paid');
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'payment_type', value: 'full_payment' },
+      { name: 'payment_status', value: 'paid' },
+      { name: 'Сума', value: '1200' },
+      { name: 'Сплата', value: '1200' },
+      { name: 'Paid amount', value: '1200' },
+      { name: 'Payment', value: 'Monobank' },
+      { name: 'Payment tag', value: 'full_payment_paid' },
+      { name: 'payment_tag', value: 'full_payment_paid' },
+      { name: 'Cash on delivery', value: 'false' },
+      { name: 'monobank_invoice_id', value: 'invoice-paid-1' },
+    ]));
+  });
+
+  test('prepayment order created after Monobank success is partially paid with Checkly fields', () => {
+    const prepaymentPayload = { ...basePayload, payment_type: 'prepayment' as const, cart_total: 1200 };
+    const payload = buildPaidShopifyOrderPayload(prepaymentPayload, 300, 'invoice-paid-300');
+
+    expect(payload.order.financial_status).toBe('partially_paid');
+    expect(payload.order.tags).toBe('prepayment_300_paid');
+    expect(String(payload.order.note)).toContain('Payment: Накладений платіж');
+    expect(String(payload.order.note)).toContain('Сума: 1200');
+    expect(String(payload.order.note)).toContain('Сплата: 300');
+    expect(String(payload.order.note)).toContain('Статус оплати: partially_paid');
+    expect(String(payload.order.note)).toContain('Тег оплати: prepayment_300_paid');
+    expect(payload.order.note_attributes).toEqual(expect.arrayContaining([
+      { name: 'payment_type', value: 'prepayment_300' },
+      { name: 'payment_status', value: 'partially_paid' },
+      { name: 'Сума', value: '1200' },
+      { name: 'Сплата', value: '300' },
+      { name: 'Paid amount', value: '300' },
+      { name: 'Payment', value: 'Накладений платіж' },
+      { name: 'Payment tag', value: 'prepayment_300_paid' },
+      { name: 'payment_tag', value: 'prepayment_300_paid' },
+      { name: 'Cash on delivery', value: 'true' },
+      { name: 'Partial payment value - Monobank', value: '300 UAH' },
+      { name: 'monobank_invoice_id', value: 'invoice-paid-300' },
+    ]));
+  });
+
+  test('international order created after payment keeps delivery details in Comment attribute', () => {
+    const internationalPayload: CheckoutPayload = {
+      ...basePayload,
+      payment_type: 'full',
+      amount: 2200,
+      cart_total: 2200,
+      shipping_type: 'international',
+      shipping: {
+        type: 'international',
+        country: 'Spain',
+        country_code: 'ES',
+        intl_city: 'Tarragona',
+        address: 'Calle L. Van Beethoven',
+        apartment: '7A',
+        postcode: '43007',
+      },
+      comment: 'Добрий день, відправте Новою поштою',
+    };
+    const payload = buildPaidShopifyOrderPayload(internationalPayload, 2200, 'invoice-intl-1');
+    const commentAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
+      .find((attribute) => attribute.name === 'Comment');
+
+    expect(payload.order.financial_status).toBe('paid');
+    expect(commentAttribute?.value).toContain('Добрий день, відправте Новою поштою');
+    expect(commentAttribute?.value).toContain('Тип доставки: закордон');
+    expect(commentAttribute?.value).toContain('Recipient Email: test@example.com');
+    expect(commentAttribute?.value).toContain('_country-code: ES');
+    expect(commentAttribute?.value).toContain('Country: Spain');
+    expect(commentAttribute?.value).toContain('City: Tarragona');
+    expect(commentAttribute?.value).toContain('Address: Calle L. Van Beethoven');
+    expect(commentAttribute?.value).toContain('Apartment: 7A');
+    expect(commentAttribute?.value).toContain('Zip code: 43007');
+    expect(commentAttribute?.value).toContain('Payment: Monobank');
+    expect(commentAttribute?.value).toContain('Статус оплати: paid');
   });
 
   test('prepayment after payment marks Shopify as partially paid and stores paid amount', () => {

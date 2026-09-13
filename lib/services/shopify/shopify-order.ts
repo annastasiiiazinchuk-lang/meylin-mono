@@ -19,6 +19,15 @@ interface ShopifyRestOrder {
   tags?: string;
 }
 
+type ShopifyPaymentStatus = 'unpaid' | 'partially_paid' | 'paid';
+
+type ShopifyOrderBuildOptions = {
+  financialStatus?: 'pending' | 'partially_paid' | 'paid';
+  paymentStatus?: ShopifyPaymentStatus;
+  paidAmount?: number;
+  invoiceId?: string;
+};
+
 const INTERNATIONAL_DELIVERY_LABEL = 'Міжнародна доставка';
 const PAYMENT_STATUS_TAGS = new Set([
   'full_payment_unpaid',
@@ -282,11 +291,22 @@ export function buildInternationalCheckoutComment(body: CheckoutPayload): string
   ].filter((line) => line && !line.endsWith(': ')).join('\n');
 }
 
-function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmount: number) {
+function buildLegacyIntegrationNoteAttributes(
+  body: CheckoutPayload,
+  paymentAmount: number,
+  options: {
+    paymentStatus?: ShopifyPaymentStatus;
+    paymentTag?: string;
+    paidAmount?: number;
+    invoiceId?: string;
+  } = {},
+) {
   const customer = body.customer || {};
   const shipping = body.shipping || {};
   const isInternational = isInternationalCheckout(body);
-  const unpaidPaymentTag = getUnpaidPaymentTag(body.payment_type);
+  const paymentTag = options.paymentTag || getUnpaidPaymentTag(body.payment_type);
+  const paymentStatus = options.paymentStatus || 'unpaid';
+  const paidAmount = options.paidAmount || 0;
   const deliveryMethod = asString(shipping.delivery_method) || 'branch';
   const country = isInternational ? asString(shipping.country) : 'Ukraine';
   const city = isInternational
@@ -303,11 +323,13 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
   const utm = buildLegacyUtmValue(body);
   const paymentCrmComment = buildPaymentCrmComment({
     paymentLabel: legacyPaymentLabel(body, isInternational),
-    paymentStatus: 'unpaid',
-    paymentTag: unpaidPaymentTag,
+    paymentStatus,
+    paymentTag,
     cartTotal: getCartTotal(body),
-    paidAmount: 0,
+    paidAmount,
+    invoiceId: options.invoiceId,
   });
+  const commentBase = isInternational ? buildInternationalCheckoutComment(body) : asString(body.comment);
   const internationalFields = isInternational
     ? [
         { name: '_country-code', value: countryCode },
@@ -337,13 +359,13 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
     { name: 'Post Office', value: warehouse },
     { name: '_zip-code', value: postcode },
     { name: 'Payment', value: legacyPaymentLabel(body, isInternational) },
-    { name: 'Comment', value: withPaymentCrmComment(body.comment, paymentCrmComment) },
+    { name: 'Comment', value: withPaymentCrmComment(commentBase, paymentCrmComment) },
     { name: 'Shipping', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'За тарифами перевізника' },
     { name: '_provider', value: isInternational ? INTERNATIONAL_DELIVERY_LABEL : 'Нова пошта' },
     { name: '_country', value: country },
-    { name: 'Payment tag', value: unpaidPaymentTag },
-    { name: 'payment_tag', value: unpaidPaymentTag },
-    { name: 'Payment status tag', value: unpaidPaymentTag },
+    { name: 'Payment tag', value: paymentTag },
+    { name: 'payment_tag', value: paymentTag },
+    { name: 'Payment status tag', value: paymentTag },
     { name: 'payment_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
     { name: 'settlement_account_id', value: env.sitniksSettlementAccountId ? String(env.sitniksSettlementAccountId) : '' },
     { name: 'Payment account', value: env.sitniksSettlementAccountTitle },
@@ -363,6 +385,7 @@ function buildLegacyIntegrationNoteAttributes(body: CheckoutPayload, paymentAmou
       name: 'Partial payment value - Monobank',
       value: body.payment_type === 'prepayment' ? `${paymentAmount || PREPAYMENT_AMOUNT} UAH` : '',
     },
+    { name: 'monobank_invoice_id', value: options.invoiceId || '' },
     { name: 'Checkout id', value: asString(body.cart_token) },
   ].filter((attribute) => attribute.value);
 }
@@ -494,7 +517,15 @@ export function buildShippingNoteAttributes(body: CheckoutPayload) {
   ].filter((attribute) => attribute.value);
 }
 
-export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: number) {
+function paidStatusForPaymentType(paymentType: PaymentType | CheckoutPayload['payment_type']): ShopifyPaymentStatus {
+  return paymentType === 'prepayment' ? 'partially_paid' : 'paid';
+}
+
+export function buildShopifyOrderPayload(
+  body: CheckoutPayload,
+  paymentAmount: number,
+  options: ShopifyOrderBuildOptions = {},
+) {
   const customer = body.customer || {};
   const paymentType = normalizePaymentTypeForShopify(body.payment_type);
   const cartTotal = getCartTotal(body);
@@ -503,13 +534,18 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
   const baseOrderNote = isInternationalCheckout(body)
     ? buildInternationalCheckoutComment(body)
     : asString(body.comment);
-  const unpaidPaymentTag = getUnpaidPaymentTag(body.payment_type);
+  const paymentStatus = options.paymentStatus || 'unpaid';
+  const paymentTag = paymentStatus === 'unpaid'
+    ? getUnpaidPaymentTag(body.payment_type)
+    : getPaidPaymentTag(body.payment_type);
+  const paidAmount = options.paidAmount || 0;
   const orderNote = withPaymentCrmComment(baseOrderNote, buildPaymentCrmComment({
     paymentLabel: legacyPaymentLabel(body, isInternationalCheckout(body)),
-    paymentStatus: 'unpaid',
-    paymentTag: unpaidPaymentTag,
+    paymentStatus,
+    paymentTag,
     cartTotal,
-    paidAmount: 0,
+    paidAmount,
+    invoiceId: options.invoiceId,
   }));
 
   if (lineItems.length === 0) throw new Error('Missing cart goods for Shopify order');
@@ -517,7 +553,7 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
   const order: Record<string, unknown> = {
     email: asString(customer.email),
     phone: asString(customer.phone),
-    financial_status: 'pending',
+    financial_status: options.financialStatus || 'pending',
     currency: 'UAH',
     tax_exempt: true,
     taxes_included: false,
@@ -528,12 +564,17 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     note_attributes: [
       { name: 'payment_type', value: paymentType },
       { name: 'shipping_type', value: asString(body.shipping_type) || 'ukraine' },
-      { name: 'payment_status', value: 'unpaid' },
+      { name: 'payment_status', value: paymentStatus },
       { name: 'Сума', value: formatPaymentAttributeAmount(cartTotal) },
-      { name: 'Сплата', value: '0' },
-      { name: 'Paid amount', value: '0' },
+      { name: 'Сплата', value: formatPaymentAttributeAmount(paidAmount) },
+      { name: 'Paid amount', value: formatPaymentAttributeAmount(paidAmount) },
       ...buildShippingNoteAttributes(body),
-      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount),
+      ...buildLegacyIntegrationNoteAttributes(body, paymentAmount, {
+        paymentStatus,
+        paymentTag,
+        paidAmount,
+        invoiceId: options.invoiceId,
+      }),
     ].filter((attribute) => attribute.value),
     shipping_address: buildShippingAddress(body),
     billing_address: buildShippingAddress(body),
@@ -552,7 +593,9 @@ export function buildShopifyOrderPayload(body: CheckoutPayload, paymentAmount: n
     ];
   }
 
-  order.tags = getInitialPaymentTags(body.payment_type);
+  order.tags = paymentStatus === 'unpaid'
+    ? getInitialPaymentTags(body.payment_type)
+    : withPaymentStatusTag(getInitialPaymentTags(body.payment_type), paymentTag);
 
   return { order, paymentType, prepaymentDiscount: 0, cartTotal };
 }
@@ -571,6 +614,38 @@ export async function createShopifyOrder(body: CheckoutPayload, paymentAmount: n
     financialStatus: data.order.financial_status,
     paymentType: payload.paymentType,
     prepaymentDiscount: payload.prepaymentDiscount,
+  });
+  return data.order;
+}
+
+export function buildPaidShopifyOrderPayload(body: CheckoutPayload, paidAmount: number, invoiceId: string) {
+  return buildShopifyOrderPayload(body, getPaymentAmount(body), {
+    financialStatus: paidStatusForPaymentType(body.payment_type),
+    paymentStatus: paidStatusForPaymentType(body.payment_type),
+    paidAmount,
+    invoiceId,
+  });
+}
+
+export async function createShopifyOrderAfterPayment(
+  body: CheckoutPayload,
+  paidAmount: number,
+  invoiceId: string,
+): Promise<ShopifyRestOrder> {
+  const payload = buildPaidShopifyOrderPayload(body, paidAmount, invoiceId);
+  const data = await shopifyRequest<{ order?: ShopifyRestOrder }>('/orders.json', {
+    method: 'POST',
+    body: JSON.stringify({ order: payload.order }),
+  });
+
+  if (!data.order?.id) throw new Error('Shopify response missing order id');
+  console.log('Shopify order created after payment:', {
+    id: data.order.id,
+    name: data.order.name,
+    financialStatus: data.order.financial_status,
+    paymentType: payload.paymentType,
+    paidAmount,
+    invoiceId,
   });
   return data.order;
 }

@@ -55,11 +55,11 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
 
   try {
     const amount = getPaymentAmount(body);
-    const shopifyOrder = await createShopifyOrder(body, amount);
     const isInstallments = body.payment_type === 'installments';
+    const shopifyOrder = isInstallments ? await createShopifyOrder(body, amount) : null;
     const invoice = isInstallments
       ? await (async () => {
-          const partsOrder = await createMonobankPartsOrder(body, shopifyOrder, amount);
+          const partsOrder = await createMonobankPartsOrder(body, shopifyOrder!, amount);
           return {
             invoiceId: partsOrder.orderId,
             invoiceUrl: '',
@@ -70,7 +70,7 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
             raw: partsOrder.raw,
           };
         })()
-      : await createMonobankInvoice(body, shopifyOrder, amount);
+      : await createMonobankInvoice(body, null, amount);
     const cartTotal = getCartTotal(body);
 
     const savedPayment = await savePendingPayment({
@@ -79,37 +79,39 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
       reference: invoice.reference,
       amount: invoice.amount,
       paymentType: invoice.paymentType,
-      shopifyOrderId: shopifyOrder.id,
-      shopifyOrderName: shopifyOrder.name,
+      shopifyOrderId: shopifyOrder?.id,
+      shopifyOrderName: shopifyOrder?.name,
       body,
       cartTotal,
     });
 
-    void (async () => {
-      try {
-        const sitniksOrder = await sendSitniksOrder(body, shopifyOrder);
-        if (sitniksOrder?.id) {
-          await markSitniksOrderSynced({
-            paymentId: savedPayment.id,
-            sitniksOrderId: sitniksOrder.id,
-            sitniksOrderNumber: sitniksOrder.orderNumber,
+    if (shopifyOrder) {
+      void (async () => {
+        try {
+          const sitniksOrder = await sendSitniksOrder(body, shopifyOrder);
+          if (sitniksOrder?.id) {
+            await markSitniksOrderSynced({
+              paymentId: savedPayment.id,
+              sitniksOrderId: sitniksOrder.id,
+              sitniksOrderNumber: sitniksOrder.orderNumber,
+            });
+          }
+        } catch (error) {
+          console.error('[Sitniks] Failed to send order:', error);
+          await markSitniksOrderSyncFailed(savedPayment.id, error).catch((syncError) => {
+            console.error('[Sitniks] Failed to save sync error:', syncError);
           });
         }
-      } catch (error) {
-        console.error('[Sitniks] Failed to send order:', error);
-        await markSitniksOrderSyncFailed(savedPayment.id, error).catch((syncError) => {
-          console.error('[Sitniks] Failed to save sync error:', syncError);
-        });
-      }
-    })();
+      })();
+    }
 
     return json({
       ...invoice,
       paymentFlow: isInstallments ? 'monobank_parts' : 'monobank_invoice',
       message: isInstallments ? 'Запит на Покупку Частинами надіслано у застосунок monobank.' : undefined,
       redirectUrl: isInstallments ? env.redirectUrl : undefined,
-      shopifyOrderId: shopifyOrder.id,
-      shopifyOrderName: shopifyOrder.name,
+      shopifyOrderId: shopifyOrder?.id,
+      shopifyOrderName: shopifyOrder?.name,
     });
   } catch (error) {
     console.error('[Orders] Error creating invoice:', error);
