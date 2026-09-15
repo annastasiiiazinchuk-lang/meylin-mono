@@ -2,7 +2,7 @@
   const API_BASE_URL = 'https://meylin-mono.onrender.com';
   const PREPAYMENT_AMOUNT = 300;
   const INTERNATIONAL_DELIVERY_FEE = 0;
-  const SCRIPT_VERSION = 'meylin-2026-09-12-payment-redirect';
+  const SCRIPT_VERSION = 'meylin-2026-09-15-utm-output';
   const SHOPIFY_ROUTES_ROOT = window.Shopify?.routes?.root || '/';
   const UPSELL_PRODUCTS = window.WOODEN_UPSELL_PRODUCTS || [
     // {
@@ -693,6 +693,7 @@
     'utm_campaign',
     'utm_content',
     'utm_term',
+    'utm_lang',
     'gclid',
     'gbraid',
     'wbraid',
@@ -700,6 +701,10 @@
     'ttclid',
     'msclkid',
   ];
+
+  function isTrackingParamName(name) {
+    return TRACKING_PARAMS.includes(name) || String(name || '').startsWith('utm_');
+  }
 
   function showDebugStatus(message) {
     if (!isNpDebug || !form) return;
@@ -796,9 +801,8 @@
       ga_session_id: getCookie('_ga_*') || saved.ga_session_id || '',
     };
 
-    TRACKING_PARAMS.forEach((name) => {
-      const value = params.get(name);
-      if (value) tracking[name] = value;
+    params.forEach((value, name) => {
+      if (value && isTrackingParamName(name)) tracking[name] = value;
     });
 
     if (tracking.fbclid && !tracking.fbc) {

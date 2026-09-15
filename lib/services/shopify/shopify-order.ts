@@ -234,26 +234,38 @@ function withPaymentCrmComment(note: unknown, paymentComment: string): string {
 }
 
 function buildLegacyUtmValue(body: CheckoutPayload): string {
-  const tracking = body.tracking || body.utm || {};
-  const keys = [
-    'utm_medium',
-    'utm_source',
-    'utm_campaign',
-    'utm_content',
-    'utm_term',
-    'fbclid',
-    'gclid',
-    'fbc',
-    'fbp',
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
+  const orderedEntries: Array<[string, string[]]> = [
+    ['utm_medium', ['utm_medium']],
+    ['utm_source', ['utm_source']],
+    ['utm_campaign', ['utm_campaign']],
+    ['utm_content', ['utm_content']],
+    ['utm_term', ['utm_term']],
+    ['fbclid', ['fbclid']],
+    ['gclid', ['gclid']],
+    ['gbraid', ['gbraid']],
+    ['wbraid', ['wbraid']],
+    ['ttclid', ['ttclid']],
+    ['msclkid', ['msclkid']],
+    ['_fbc', ['_fbc', 'fbc']],
+    ['_fbp', ['_fbp', 'fbp']],
+    ['utm_lang', ['utm_lang']],
   ];
-
-  return keys
-    .map((key) => {
-      const value = asString(tracking[key]);
-      return value ? `${key}: ${value}` : '';
+  const handledTrackingKeys = new Set(orderedEntries.flatMap(([, keys]) => keys));
+  const orderedValues = orderedEntries
+    .map(([label, keys]) => {
+      const value = keys.map((key) => asString(tracking[key])).find(Boolean);
+      return value ? `${label}: ${value}` : '';
     })
-    .filter(Boolean)
-    .join('; ');
+    .filter(Boolean);
+  const extraUtmValues = Object.entries(tracking)
+    .filter(([key, value]) => key.startsWith('utm_') && !handledTrackingKeys.has(key) && asString(value))
+    .map(([key, value]) => `${key}: ${asString(value)}`);
+
+  return [...orderedValues, ...extraUtmValues].join('; ');
 }
 
 function getCountryCode(countryOrCode: string): string {
@@ -458,13 +470,17 @@ export function buildLineItems(body: CheckoutPayload) {
 }
 
 export function buildTrackingNoteAttributes(body: CheckoutPayload) {
-  const tracking = body.tracking || body.utm || {};
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
   const allowedKeys = [
     'utm_source',
     'utm_medium',
     'utm_campaign',
     'utm_content',
     'utm_term',
+    'utm_lang',
     'gclid',
     'gbraid',
     'wbraid',

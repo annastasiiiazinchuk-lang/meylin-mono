@@ -46,11 +46,15 @@ export async function handleCreateInvoice(request: Request): Promise<Response> {
     request.headers.get('x-real-ip') ||
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     '';
+  const rawTracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
   body.tracking = {
-    ...(body.tracking || body.utm || {}),
-    user_agent: String((body.tracking || body.utm || {}).user_agent || requestUserAgent).trim(),
-    page_url: String((body.tracking || body.utm || {}).page_url || requestPageUrl).trim(),
-    client_ip_address: String((body.tracking || body.utm || {}).client_ip_address || requestIp).trim(),
+    ...rawTracking,
+    user_agent: String(rawTracking.user_agent || requestUserAgent).trim(),
+    page_url: String(rawTracking.page_url || requestPageUrl).trim(),
+    client_ip_address: String(rawTracking.client_ip_address || requestIp).trim(),
   };
 
   try {

@@ -455,7 +455,10 @@ export function buildSitniksNpDelivery(body: CheckoutPayload) {
 }
 
 function buildUtm(body: CheckoutPayload) {
-  const tracking = body.tracking || body.utm || {};
+  const tracking = {
+    ...(body.utm || {}),
+    ...(body.tracking || {}),
+  };
   const utm = {
     source: asString(tracking.utm_source),
     medium: asString(tracking.utm_medium),

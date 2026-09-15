@@ -122,6 +122,41 @@ describe('Shopify order mapping', () => {
     ]));
   });
 
+  test('order additional details include UTM marks in Checkly-compatible field', () => {
+    const payload = buildShopifyOrderPayload({
+      ...basePayload,
+      utm: {
+        utm_source: 'ig',
+        utm_medium: 'social',
+      },
+      tracking: {
+        utm_campaign: 'fall',
+        utm_content: 'link_in_bio',
+        utm_term: 'midi',
+        utm_lang: 'uk',
+        utm_id: 'campaign-123',
+        fbclid: 'fb-click-id',
+        fbc: 'fb.1.17887050587983.fb-click-id',
+        fbp: 'fb.1.17887050546561.847850575329279795',
+        gclid: 'google-click-id',
+      },
+    }, getPaymentAmount(basePayload));
+    const utmAttribute = (payload.order.note_attributes as Array<{ name?: string; value?: string }>)
+      .find((attribute) => attribute.name === 'UTM');
+
+    expect(utmAttribute?.value).toContain('utm_medium: social');
+    expect(utmAttribute?.value).toContain('utm_source: ig');
+    expect(utmAttribute?.value).toContain('utm_campaign: fall');
+    expect(utmAttribute?.value).toContain('utm_content: link_in_bio');
+    expect(utmAttribute?.value).toContain('utm_term: midi');
+    expect(utmAttribute?.value).toContain('fbclid: fb-click-id');
+    expect(utmAttribute?.value).toContain('gclid: google-click-id');
+    expect(utmAttribute?.value).toContain('_fbc: fb.1.17887050587983.fb-click-id');
+    expect(utmAttribute?.value).toContain('_fbp: fb.1.17887050546561.847850575329279795');
+    expect(utmAttribute?.value).toContain('utm_lang: uk');
+    expect(utmAttribute?.value).toContain('utm_id: campaign-123');
+  });
+
   test('custom checkout orders do not add Shopify taxes', () => {
     const payload = buildShopifyOrderPayload(basePayload, getPaymentAmount(basePayload));
     const lineItems = payload.order.line_items as Array<Record<string, unknown>>;
