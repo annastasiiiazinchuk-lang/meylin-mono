@@ -1,7 +1,7 @@
 import { env } from '../../config/env';
 import type { StoredPaymentMetadata } from '../../types/checkout';
 import type { MonobankWebhookBody } from '../../types/monobank';
-import { asNumber, asString } from '../../utils/format';
+import { asNumber, asString, parseJsonObject } from '../../utils/format';
 
 type Ga4Item = {
   item_id: string;
@@ -14,9 +14,18 @@ type Ga4PurchasePayload = {
   client_id: string;
   user_id?: string;
   timestamp_micros: number;
+  validation_behavior?: 'ENFORCE_RECOMMENDATIONS';
   events: Array<{
     name: 'purchase';
     params: Record<string, unknown>;
+  }>;
+};
+
+type Ga4ValidationResponse = {
+  validationMessages?: Array<{
+    fieldPath?: string;
+    description?: string;
+    validationCode?: string;
   }>;
 };
 
@@ -152,6 +161,38 @@ export function buildGa4PurchasePayload(
   };
 }
 
+export function buildGa4ValidationPayload(payload: Ga4PurchasePayload): Ga4PurchasePayload {
+  return {
+    ...payload,
+    validation_behavior: 'ENFORCE_RECOMMENDATIONS',
+  };
+}
+
+async function validateGa4PurchasePayload(payload: Ga4PurchasePayload): Promise<void> {
+  const response = await fetch(
+    `https://www.google-analytics.com/debug/mp/collect?measurement_id=${encodeURIComponent(env.ga4MeasurementId)}&api_secret=${encodeURIComponent(env.ga4ApiSecret)}`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(buildGa4ValidationPayload(payload)),
+    },
+  );
+
+  const text = await response.text();
+  const data = parseJsonObject<Ga4ValidationResponse>(text, 'Google GA4 validation');
+  const messages = data.validationMessages || [];
+
+  if (messages.length > 0) {
+    console.warn('Google GA4 Purchase validation messages:', messages);
+    return;
+  }
+
+  console.log('Google GA4 Purchase validation OK:', {
+    measurementId: env.ga4MeasurementId,
+    transactionId: payload.events[0]?.params.transaction_id,
+  });
+}
+
 export async function sendGa4PurchaseEvent(
   payment: StoredPaymentMetadata,
   webhookBody: MonobankWebhookBody,
@@ -179,5 +220,12 @@ export async function sendGa4PurchaseEvent(
     status: response.status,
     measurementId: env.ga4MeasurementId,
     transactionId: payload.events[0]?.params.transaction_id,
+    hasClientId: Boolean(payload.client_id),
+    hasSessionId: Boolean(payload.events[0]?.params.session_id),
+    hasGclid: Boolean(payload.events[0]?.params.gclid),
+  });
+
+  await validateGa4PurchasePayload(payload).catch((error) => {
+    console.error('Failed to validate Google GA4 Purchase:', error);
   });
 }

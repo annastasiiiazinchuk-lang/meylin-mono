@@ -1,5 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import {
+  buildGa4ValidationPayload,
   buildGa4PurchasePayload,
   normalizeGaClientId,
   normalizeGaSessionId,
@@ -69,6 +70,8 @@ describe('Google Analytics Measurement Protocol', () => {
         quantity: 1,
       },
     ]);
+
+    expect(buildGa4ValidationPayload(payload!).validation_behavior).toBe('ENFORCE_RECOMMENDATIONS');
   });
 
   test('builds a purchase payload even when GA client id is missing', () => {
