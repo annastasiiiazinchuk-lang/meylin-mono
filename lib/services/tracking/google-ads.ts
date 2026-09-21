@@ -21,7 +21,6 @@ type GoogleAdsClickConversion = {
   gbraid?: string;
   wbraid?: string;
   userIdentifiers?: Array<Record<string, string>>;
-  userIpAddress?: string;
 };
 
 type GoogleAdsUploadRequest = {
@@ -159,7 +158,6 @@ export function buildGoogleAdsClickConversion(
     conversionEnvironment: 'WEB',
     [clickId.field]: clickId.value,
     userIdentifiers,
-    userIpAddress: asString(tracking.client_ip_address || tracking.ip_address),
   }) as GoogleAdsClickConversion;
 }
 

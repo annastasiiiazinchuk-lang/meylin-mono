@@ -25,7 +25,6 @@ const payment: StoredPaymentMetadata = {
   },
   tracking: {
     gcl_aw: 'GCL.1788444000.test-gclid-123',
-    client_ip_address: '203.0.113.10',
   },
   cartTotal: 3990,
   goods: [],
@@ -80,7 +79,6 @@ describe('Google Ads conversion upload payload', () => {
       orderId: '260903EvE3BBYYGZWRi5',
       conversionEnvironment: 'WEB',
       gclid: 'test-gclid-123',
-      userIpAddress: '203.0.113.10',
     });
     expect(conversion?.userIdentifiers).toEqual([
       { hashedEmail: sha256('test@example.com') },
