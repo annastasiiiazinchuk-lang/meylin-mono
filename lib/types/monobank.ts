@@ -10,6 +10,8 @@ export interface MonobankWebhookBody {
   amount?: number;
   finalAmount?: number;
   ccy?: number;
+  createdDate?: string;
+  modifiedDate?: string;
   paymentInfo?: Record<string, unknown>;
 }
 

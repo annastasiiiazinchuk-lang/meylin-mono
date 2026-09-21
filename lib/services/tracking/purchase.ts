@@ -1,5 +1,6 @@
 import type { StoredPaymentMetadata } from '../../types/checkout';
 import type { MonobankWebhookBody } from '../../types/monobank';
+import { sendGoogleAdsClickConversion } from './google-ads';
 import { sendGa4PurchaseEvent } from './google-analytics';
 import { sendMetaPurchaseEvent } from './meta';
 
@@ -13,5 +14,9 @@ export async function sendServerSidePurchaseEvents(
 
   await sendGa4PurchaseEvent(payment, body).catch((error) => {
     console.error('Failed to send Google GA4 Purchase:', error);
+  });
+
+  await sendGoogleAdsClickConversion(payment, body).catch((error) => {
+    console.error('Failed to send Google Ads conversion:', error);
   });
 }

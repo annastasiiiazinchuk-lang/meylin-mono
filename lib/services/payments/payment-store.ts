@@ -197,6 +197,17 @@ function readRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function readPaymentTracking(payment: Awaited<ReturnType<typeof getPaymentByInvoiceId>>): Record<string, unknown> {
+  if (!payment) return {};
+
+  const orderData = readRecord(payment.shopifyOrderData);
+  return {
+    ...readRecord(payment.utm),
+    ...readRecord(orderData.tracking),
+    ...readRecord(payment.tracking),
+  };
+}
+
 export function paymentToCheckoutPayload(payment: Awaited<ReturnType<typeof getPaymentByInvoiceId>>): CheckoutPayload | null {
   if (!payment) return null;
 
@@ -205,7 +216,7 @@ export function paymentToCheckoutPayload(payment: Awaited<ReturnType<typeof getP
   const customer = readRecord(storedPayload.customer || orderData.customer);
   const shipping = readRecord(storedPayload.shipping || payment.shipping);
   const shippingType = asString(storedPayload.shipping_type || shipping.type);
-  const tracking = readRecord(payment.tracking || orderData.tracking || payment.utm);
+  const tracking = readPaymentTracking(payment);
 
   return {
     ...(storedPayload as Partial<CheckoutPayload>),
@@ -246,7 +257,7 @@ export function paymentToMetadata(payment: Awaited<ReturnType<typeof getPaymentB
       phone: payment.customerPhone,
       email: payment.customerEmail,
     },
-    tracking: (payment.tracking || payment.utm || {}) as Record<string, unknown>,
+    tracking: readPaymentTracking(payment),
     cartTotal: payment.cartTotal || payment.amount,
     goods: payment.goods as CheckoutPayload['goods'],
   };

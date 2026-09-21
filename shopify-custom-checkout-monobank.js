@@ -2,7 +2,7 @@
   const API_BASE_URL = 'https://meylin-mono.onrender.com';
   const PREPAYMENT_AMOUNT = 300;
   const INTERNATIONAL_DELIVERY_FEE = 0;
-  const SCRIPT_VERSION = 'meylin-2026-09-15-utm-output';
+  const SCRIPT_VERSION = 'meylin-2026-09-21-google-ads-attribution';
   const SHOPIFY_ROUTES_ROOT = window.Shopify?.routes?.root || '/';
   const UPSELL_PRODUCTS = window.WOODEN_UPSELL_PRODUCTS || [
     // {
@@ -786,9 +786,45 @@
     return match ? decodeURIComponent(match[1]) : '';
   }
 
+  function getCookieByPrefix(prefix) {
+    return document.cookie
+      .split(';')
+      .map((item) => item.trim())
+      .find((item) => item.startsWith(prefix))
+      ?.split('=')
+      .slice(1)
+      .join('=') || '';
+  }
+
+  function normalizeGaClientId(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    if (/^GA\d+\.\d+\./.test(raw)) return raw.split('.').slice(2).join('.');
+    return raw;
+  }
+
+  function normalizeGaSessionId(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const prefixedMatch = raw.match(/(?:^|[.$])s(\d{8,})(?:[$.]|$)/);
+    if (prefixedMatch?.[1]) return prefixedMatch[1];
+    if (/^GS\d+\.\d+\./.test(raw)) return raw.split('.')[2] || '';
+    return raw;
+  }
+
+  function extractGclidFromGclAw(value) {
+    const raw = String(value || '').trim();
+    if (!raw) return '';
+    const parts = raw.split('.');
+    return parts.length >= 3 ? parts.slice(2).join('.') : '';
+  }
+
   function collectTrackingData() {
     const params = new URLSearchParams(window.location.search);
     const saved = readJsonStorage(TRACKING_STORAGE_KEY);
+    const gaCookie = getCookie('_ga') || saved.ga_cookie || '';
+    const gaSessionCookie = getCookieByPrefix('_ga_') || saved.ga_session_cookie || '';
+    const gclAw = getCookie('_gcl_aw') || saved.gcl_aw || '';
     const tracking = {
       ...saved,
       landing_page: saved.landing_page || window.location.href,
@@ -797,8 +833,12 @@
       page_url: window.location.href,
       fbp: getCookie('_fbp') || saved.fbp || '',
       fbc: getCookie('_fbc') || saved.fbc || '',
-      ga_client_id: getCookie('_ga') || saved.ga_client_id || '',
-      ga_session_id: getCookie('_ga_*') || saved.ga_session_id || '',
+      ga_cookie: gaCookie,
+      ga_client_id: normalizeGaClientId(gaCookie) || saved.ga_client_id || '',
+      ga_session_cookie: gaSessionCookie,
+      ga_session_id: normalizeGaSessionId(gaSessionCookie) || saved.ga_session_id || '',
+      gcl_aw: gclAw,
+      gcl_au: getCookie('_gcl_au') || saved.gcl_au || '',
     };
 
     params.forEach((value, name) => {
@@ -807,6 +847,10 @@
 
     if (tracking.fbclid && !tracking.fbc) {
       tracking.fbc = `fb.1.${Date.now()}.${tracking.fbclid}`;
+    }
+
+    if (!tracking.gclid && tracking.gcl_aw) {
+      tracking.gclid = extractGclidFromGclAw(tracking.gcl_aw);
     }
 
     localStorage.setItem(TRACKING_STORAGE_KEY, JSON.stringify(tracking));

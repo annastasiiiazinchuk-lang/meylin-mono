@@ -44,6 +44,23 @@ function getTrackingSubset(tracking: unknown) {
   );
 }
 
+function readRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : {};
+}
+
+function getPaymentTracking(payment: Awaited<ReturnType<typeof getPaymentByInvoiceId>>): Record<string, unknown> {
+  if (!payment) return {};
+
+  const orderData = readRecord(payment.shopifyOrderData);
+  return {
+    ...readRecord(payment.utm),
+    ...readRecord(orderData.tracking),
+    ...readRecord(payment.tracking),
+  };
+}
+
 export async function handlePaymentStatus(request: Request): Promise<Response> {
   const url = new URL(request.url);
   const invoiceId = url.searchParams.get('invoiceId')?.trim() || '';
@@ -78,6 +95,6 @@ export async function handlePaymentStatus(request: Request): Promise<Response> {
     cartTotal: asNumber(payment.cartTotal),
     paymentType: payment.paymentType || '',
     items: (payment.goods || []).map(toTrackingItem),
-    tracking: getTrackingSubset(payment.tracking || payment.utm),
+    tracking: getTrackingSubset(getPaymentTracking(payment)),
   });
 }

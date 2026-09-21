@@ -94,6 +94,20 @@ META_ACCESS_TOKEN=
 META_GRAPH_VERSION=v23.0
 ```
 
+Для прямого server-side відправлення покупок у Google Ads окремо від GA4 імпорту потрібні Google Ads API доступи:
+
+```env
+GOOGLE_ADS_CUSTOMER_ID=
+GOOGLE_ADS_LOGIN_CUSTOMER_ID=
+GOOGLE_ADS_DEVELOPER_TOKEN=
+GOOGLE_ADS_CLIENT_ID=
+GOOGLE_ADS_CLIENT_SECRET=
+GOOGLE_ADS_REFRESH_TOKEN=
+GOOGLE_ADS_CONVERSION_ACTION_ID=
+```
+
+`GOOGLE_ADS_CONVERSION_ACTION_ID` - це не conversion label з тега, а numeric id conversion action в Google Ads.
+
 ## Shopify app
 
 У Shopify Dev Dashboard:

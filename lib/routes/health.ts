@@ -2,6 +2,7 @@ import { env } from '../config/env';
 import { json } from '../http/responses';
 import { prisma } from '../prisma';
 import { hasShopifyToken } from '../services/shopify/shopify-auth';
+import { isGoogleAdsConversionUploadReady } from '../services/tracking/google-ads';
 
 export async function handleHealth(): Promise<Response> {
   let shopifyTokenReady = false;
@@ -21,6 +22,7 @@ export async function handleHealth(): Promise<Response> {
     novaPoshtaReady: Boolean(env.novaPoshtaApiKey),
     metaReady: Boolean(env.metaPixelId && env.metaAccessToken),
     ga4ServerReady: Boolean(env.ga4MeasurementId && env.ga4ApiSecret),
+    googleAdsConversionUploadReady: isGoogleAdsConversionUploadReady(),
     sitniksReady: Boolean(env.sitniksApiToken),
     sitniksPaymentReady: Boolean(env.sitniksApiToken && env.sitniksSettlementAccountId > 0),
     sitniksReceiptsEnabled: env.sitniksReceiptsEnabled,
